@@ -1,0 +1,246 @@
+-- 2 IMAGES: EDITORIAL & SCRAPBOOK
+(2, 'The Balanced Horizon', 'Symmetric', '1:1', '[{"top": 3, "left": 3, "width": 94, "height": 46, "z_index": 1}, {"top": 51, "left": 3, "width": 94, "height": 46, "z_index": 1}]'),
+(2, 'Polaroid Stack', 'Scrapbook', '1:1', '[{"top": 10, "left": 10, "width": 55, "height": 65, "z_index": 1}, {"top": 25, "left": 35, "width": 55, "height": 65, "z_index": 2}]'),
+
+-- 3 IMAGES: THE "CHEF'S TABLE" SERIES
+(3, 'The Sidebar Hero', 'Editorial', '1:1', '[{"top": 3, "left": 3, "width": 25, "height": 30, "z_index": 1}, {"top": 35, "left": 3, "width": 25, "height": 30, "z_index": 1}, {"top": 3, "left": 30, "width": 67, "height": 94, "z_index": 1}]'),
+(3, 'Staggered Steps', 'Asymmetric', '1:1', '[{"top": 3, "left": 3, "width": 45, "height": 45, "z_index": 1}, {"top": 25, "left": 51, "width": 45, "height": 45, "z_index": 1}, {"top": 51, "left": 3, "width": 45, "height": 45, "z_index": 1}]'),
+
+-- 4 IMAGES: THE "GALLERY WALL"
+(4, 'The Pinwheel', 'Asymmetric', '1:1', '[{"top": 3, "left": 3, "width": 60, "height": 40, "z_index": 1}, {"top": 3, "left": 65, "width": 32, "height": 60, "z_index": 1}, {"top": 45, "left": 3, "width": 32, "height": 52, "z_index": 1}, {"top": 65, "left": 37, "width": 60, "height": 32, "z_index": 1}]'),
+(4, 'Vertical Ribbons', 'Symmetric', '16:9', '[{"top": 3, "left": 3, "width": 22, "height": 94, "z_index": 1}, {"top": 3, "left": 27, "width": 22, "height": 94, "z_index": 1}, {"top": 3, "left": 51, "width": 22, "height": 94, "z_index": 1}, {"top": 3, "left": 75, "width": 22, "height": 94, "z_index": 1}]'),
+
+-- 5 IMAGES: MODERN MIX
+(5, 'The Cross', 'Editorial', '1:1', '[{"top": 3, "left": 35, "width": 30, "height": 30, "z_index": 1}, {"top": 35, "left": 3, "width": 30, "height": 30, "z_index": 1}, {"top": 35, "left": 35, "width": 30, "height": 30, "z_index": 2}, {"top": 35, "left": 67, "width": 30, "height": 30, "z_index": 1}, {"top": 67, "left": 35, "width": 30, "height": 30, "z_index": 1}]'),
+(5, 'Text-Heavy Bottom', 'Negative Space', '4:3', '[{"top": 3, "left": 3, "width": 17, "height": 20, "z_index": 1}, {"top": 3, "left": 22, "width": 17, "height": 20, "z_index": 1}, {"top": 3, "left": 41, "width": 17, "height": 20, "z_index": 1}, {"top": 3, "left": 60, "width": 17, "height": 20, "z_index": 1}, {"top": 3, "left": 79, "width": 17, "height": 20, "z_index": 1}]'),
+
+-- 6 IMAGES: THE "SIX-PACK" GRID
+(6, 'Classic 3x2 Grid', 'Symmetric', '1:1', '[{"top": 3, "left": 3, "width": 30, "height": 46, "z_index": 1}, {"top": 3, "left": 35, "width": 30, "height": 46, "z_index": 1}, {"top": 3, "left": 67, "width": 30, "height": 46, "z_index": 1}, {"top": 51, "left": 3, "width": 30, "height": 46, "z_index": 1}, {"top": 51, "left": 35, "width": 30, "height": 46, "z_index": 1}, {"top": 51, "left": 67, "width": 30, "height": 46, "z_index": 1}]'),
+(6, 'Spiral Collage', 'Asymmetric', '1:1', '[{"top": 3, "left": 3, "width": 45, "height": 45, "z_index": 1}, {"top": 3, "left": 51, "width": 22, "height": 22, "z_index": 1}, {"top": 3, "left": 75, "width": 22, "height": 22, "z_index": 1}, {"top": 27, "left": 51, "width": 46, "height": 21, "z_index": 1}, {"top": 51, "left": 51, "width": 46, "height": 46, "z_index": 1}, {"top": 51, "left": 3, "width": 45, "height": 45, "z_index": 1}]'),
+
+-- 7 IMAGES: VARIED SIZES
+(7, 'The Feature Film', 'Editorial', '16:9', '[{"top": 3, "left": 3, "width": 60, "height": 60, "z_index": 1}, {"top": 3, "left": 65, "width": 32, "height": 18, "z_index": 1}, {"top": 23, "left": 65, "width": 32, "height": 18, "z_index": 1}, {"top": 43, "left": 65, "width": 32, "height": 18, "z_index": 1}, {"top": 65, "left": 3, "width": 30, "height": 32, "z_index": 1}, {"top": 65, "left": 35, "width": 30, "height": 32, "z_index": 1}, {"top": 65, "left": 67, "width": 30, "height": 32, "z_index": 1}]'),
+
+-- 9 IMAGES: THE 3x3 BLOCK
+(9, 'Perfect Square 9', 'Symmetric', '1:1', '[
+  {"top": 3, "left": 3, "width": 30, "height": 30, "z_index": 1}, {"top": 3, "left": 35, "width": 30, "height": 30, "z_index": 1}, {"top": 3, "left": 67, "width": 30, "height": 30, "z_index": 1},
+  {"top": 35, "left": 3, "width": 30, "height": 30, "z_index": 1}, {"top": 35, "left": 35, "width": 30, "height": 30, "z_index": 1}, {"top": 35, "left": 67, "width": 30, "height": 30, "z_index": 1},
+  {"top": 67, "left": 3, "width": 30, "height": 30, "z_index": 1}, {"top": 67, "left": 35, "width": 30, "height": 30, "z_index": 1}, {"top": 67, "left": 67, "width": 30, "height": 30, "z_index": 1}
+]');
+
+-- 2 IMAGES: MODERN OVERLAP (SCRAPBOOK)
+(2, 'The Signature Stamp', 'Scrapbook', '1:1', '[{"top": 5, "left": 5, "width": 85, "height": 85, "z_index": 1}, {"top": 60, "left": 60, "width": 35, "height": 35, "z_index": 2}]'),
+
+-- 4 IMAGES: THE "PROCESS" STRIP
+(4, 'The Step-by-Step', 'Editorial', '16:9', '[{"top": 5, "left": 3, "width": 22, "height": 90, "z_index": 1}, {"top": 5, "left": 27, "width": 22, "height": 90, "z_index": 1}, {"top": 5, "left": 51, "width": 22, "height": 90, "z_index": 1}, {"top": 5, "left": 75, "width": 22, "height": 90, "z_index": 1}]'),
+
+-- 6 IMAGES: THE "MAGAZINE SPREAD"
+(6, 'The Culinary Feature', 'Editorial', '1:1', '[{"top": 3, "left": 3, "width": 50, "height": 60, "z_index": 1}, {"top": 3, "left": 55, "width": 42, "height": 28, "z_index": 1}, {"top": 33, "left": 55, "width": 42, "height": 28, "z_index": 1}, {"top": 65, "left": 3, "width": 30, "height": 32, "z_index": 1}, {"top": 65, "left": 35, "width": 30, "height": 32, "z_index": 1}, {"top": 65, "left": 67, "width": 30, "height": 32, "z_index": 1}]'),
+
+-- 8 IMAGES: DENSE SYMMETRY
+(8, 'The Grid Pro', 'Symmetric', '1:1', '[
+  {"top": 3, "left": 3, "width": 22, "height": 45, "z_index": 1}, {"top": 3, "left": 27, "width": 22, "height": 45, "z_index": 1}, {"top": 3, "left": 51, "width": 22, "height": 45, "z_index": 1}, {"top": 3, "left": 75, "width": 22, "height": 45, "z_index": 1},
+  {"top": 51, "left": 3, "width": 22, "height": 45, "z_index": 1}, {"top": 51, "left": 27, "width": 22, "height": 45, "z_index": 1}, {"top": 51, "left": 51, "width": 22, "height": 45, "z_index": 1}, {"top": 51, "left": 75, "width": 22, "height": 45, "z_index": 1}
+]'),
+
+-- 9 IMAGES: ARTISTIC ASYMMETRY
+(9, 'The Big & Small Mix', 'Asymmetric', '1:1', '[
+  {"top": 3, "left": 3, "width": 46, "height": 46, "z_index": 1}, {"top": 3, "left": 51, "width": 22, "height": 22, "z_index": 1}, {"top": 3, "left": 75, "width": 22, "height": 22, "z_index": 1},
+  {"top": 27, "left": 51, "width": 22, "height": 22, "z_index": 1}, {"top": 27, "left": 75, "width": 22, "height": 22, "z_index": 1},
+  {"top": 51, "left": 3, "width": 22, "height": 22, "z_index": 1}, {"top": 51, "left": 27, "width": 22, "height": 22, "z_index": 1}, {"top": 51, "left": 51, "width": 46, "height": 46, "z_index": 1},
+  {"top": 75, "left": 3, "width": 22, "height": 22, "z_index": 1}, {"top": 75, "left": 27, "width": 22, "height": 22, "z_index": 1}
+]'),
+
+-- 10 IMAGES: THE "CONTACT SHEET"
+(10, 'Professional Proofs', 'Symmetric', '4:3', '[
+  {"top": 3, "left": 3, "width": 17, "height": 45, "z_index": 1}, {"top": 3, "left": 22, "width": 17, "height": 45, "z_index": 1}, {"top": 3, "left": 41, "width": 17, "height": 45, "z_index": 1}, {"top": 3, "left": 60, "width": 17, "height": 45, "z_index": 1}, {"top": 3, "left": 79, "width": 17, "height": 45, "z_index": 1},
+  {"top": 52, "left": 3, "width": 17, "height": 45, "z_index": 1}, {"top": 52, "left": 22, "width": 17, "height": 45, "z_index": 1}, {"top": 52, "left": 41, "width": 17, "height": 45, "z_index": 1}, {"top": 52, "left": 60, "width": 17, "height": 45, "z_index": 1}, {"top": 52, "left": 79, "width": 17, "height": 45, "z_index": 1}
+]');
+
+INSERT INTO album_layouts (image_count, name, category, aspect_ratio, config) VALUES
+-- 1 IMAGE LAYOUTS
+(1, 'Hero Full Bleed', 'Symmetric', '1:1', '[{"top": 0, "left": 0, "width": 100, "height": 100, "z_index": 1}]'),
+(1, 'Safe Margin Portrait', 'Editorial', '4:3', '[{"top": 5, "left": 10, "width": 80, "height": 90, "z_index": 1}]'),
+(1, 'Negative Space Right', 'Negative Space', '1:1', '[{"top": 10, "left": 5, "width": 40, "height": 80, "z_index": 1}]'),
+
+-- 2 IMAGE LAYOUTS
+(2, 'The Split View', 'Symmetric', '1:1', '[{"top": 3, "left": 3, "width": 46, "height": 94, "z_index": 1}, {"top": 3, "left": 51, "width": 46, "height": 94, "z_index": 1}]'),
+(2, 'Asymmetric Overlap', 'Scrapbook', '1:1', '[{"top": 10, "left": 10, "width": 60, "height": 60, "z_index": 1}, {"top": 40, "left": 40, "width": 50, "height": 50, "z_index": 2}]'),
+
+-- 3 IMAGE LAYOUTS (Hero + 2)
+(3, 'Editorial Hero Left', 'Editorial', '16:9', '[{"top": 3, "left": 3, "width": 60, "height": 94, "z_index": 1}, {"top": 3, "left": 65, "width": 32, "height": 45, "z_index": 1}, {"top": 52, "left": 65, "width": 32, "height": 45, "z_index": 1}]'),
+(3, 'Modern Triptych', 'Symmetric', '1:1', '[{"top": 3, "left": 3, "width": 30, "height": 94, "z_index": 1}, {"top": 3, "left": 35, "width": 30, "height": 94, "z_index": 1}, {"top": 3, "left": 67, "width": 30, "height": 94, "z_index": 1}]'),
+
+-- 4 IMAGE LAYOUTS
+(4, 'The Quad Grid', 'Symmetric', '1:1', '[{"top": 3, "left": 3, "width": 46, "height": 46, "z_index": 1}, {"top": 3, "left": 51, "width": 46, "height": 46, "z_index": 1}, {"top": 51, "left": 3, "width": 46, "height": 46, "z_index": 1}, {"top": 51, "left": 51, "width": 46, "height": 46, "z_index": 1}]'),
+(4, 'Focus Center', 'Editorial', '1:1', '[{"top": 25, "left": 25, "width": 50, "height": 50, "z_index": 2}, {"top": 3, "left": 3, "width": 45, "height": 45, "z_index": 1}, {"top": 3, "left": 52, "width": 45, "height": 45, "z_index": 1}, {"top": 52, "left": 3, "width": 94, "height": 45, "z_index": 1}]'),
+
+-- 5 IMAGE LAYOUTS
+(5, 'The Mosaic Hero', 'Asymmetric', '1:1', '[{"top": 3, "left": 3, "width": 64, "height": 64, "z_index": 1}, {"top": 3, "left": 69, "width": 28, "height": 31, "z_index": 1}, {"top": 36, "left": 69, "width": 28, "height": 31, "z_index": 1}, {"top": 69, "left": 3, "width": 46, "height": 28, "z_index": 1}, {"top": 69, "left": 51, "width": 46, "height": 28, "z_index": 1}]'),
+
+-- 8 IMAGE LAYOUTS (Complex Grid)
+(8, 'Cookbook Gallery', 'Symmetric', '1:1', '[
+  {"top": 3, "left": 3, "width": 22, "height": 46, "z_index": 1}, {"top": 3, "left": 27, "width": 22, "height": 46, "z_index": 1}, 
+  {"top": 3, "left": 51, "width": 22, "height": 46, "z_index": 1}, {"top": 3, "left": 75, "width": 22, "height": 46, "z_index": 1},
+  {"top": 51, "left": 3, "width": 22, "height": 46, "z_index": 1}, {"top": 51, "left": 27, "width": 22, "height": 46, "z_index": 1},
+  {"top": 51, "left": 51, "width": 22, "height": 46, "z_index": 1}, {"top": 51, "left": 75, "width": 22, "height": 46, "z_index": 1}
+]'),
+
+-- 10 IMAGE LAYOUTS
+(10, 'The Decagon', 'Asymmetric', '1:1', '[
+  {"top": 3, "left": 3, "width": 38, "height": 38, "z_index": 1}, {"top": 3, "left": 43, "width": 18, "height": 18, "z_index": 1},
+  {"top": 3, "left": 63, "width": 18, "height": 18, "z_index": 1}, {"top": 3, "left": 83, "width": 14, "height": 14, "z_index": 1},
+  {"top": 23, "left": 43, "width": 38, "height": 38, "z_index": 1}, {"top": 43, "left": 3, "width": 38, "height": 38, "z_index": 1},
+  {"top": 63, "left": 43, "width": 18, "height": 18, "z_index": 1}, {"top": 63, "left": 63, "width": 18, "height": 18, "z_index": 1},
+  {"top": 83, "left": 3, "width": 94, "height": 14, "z_index": 1}, {"top": 19, "left": 83, "width": 14, "height": 62, "z_index": 1}
+]');
+
+-- =====================================================
+-- SINGLE PAGE — 1 IMAGE (20)
+-- =====================================================
+
+(1,'Single Centered',false,'[{"top":5,"left":5,"width":90,"height":90}]'),
+(1,'Full Bleed',false,'[{"top":2,"left":2,"width":96,"height":96}]'),
+(1,'Golden Portrait',false,'[{"top":10,"left":20,"width":60,"height":80}]'),
+(1,'Golden Landscape',false,'[{"top":20,"left":10,"width":80,"height":60}]'),
+(1,'Offset Left',false,'[{"top":8,"left":5,"width":75,"height":84}]'),
+(1,'Offset Right',false,'[{"top":8,"left":20,"width":75,"height":84}]'),
+(1,'Tall Hero',false,'[{"top":5,"left":30,"width":40,"height":90}]'),
+(1,'Wide Hero',false,'[{"top":30,"left":5,"width":90,"height":40}]'),
+(1,'Minimal Frame',false,'[{"top":15,"left":15,"width":70,"height":70}]'),
+(1,'Square Center',false,'[{"top":20,"left":20,"width":60,"height":60}]'),
+(1,'Top Emphasis',false,'[{"top":5,"left":10,"width":80,"height":60}]'),
+(1,'Bottom Emphasis',false,'[{"top":35,"left":10,"width":80,"height":60}]'),
+(1,'Left Vertical',false,'[{"top":10,"left":5,"width":45,"height":80}]'),
+(1,'Right Vertical',false,'[{"top":10,"left":50,"width":45,"height":80}]'),
+(1,'Centered Portrait',false,'[{"top":5,"left":35,"width":30,"height":90}]'),
+(1,'Centered Landscape',false,'[{"top":35,"left":5,"width":90,"height":30}]'),
+(1,'Golden Vertical',false,'[{"top":5,"left":38,"width":24,"height":90}]'),
+(1,'Modern Margin',false,'[{"top":8,"left":8,"width":84,"height":84}]'),
+(1,'Art Frame',false,'[{"top":18,"left":18,"width":64,"height":64}]'),
+(1,'Classic Matte',false,'[{"top":12,"left":12,"width":76,"height":76}]');
+
+-- =====================================================
+-- SINGLE PAGE — 2 IMAGES (20)
+-- =====================================================
+
+(2,'Side by Side',false,'[{"top":5,"left":5,"width":44,"height":90},{"top":5,"left":51,"width":44,"height":90}]'),
+(2,'Stacked',false,'[{"top":5,"left":5,"width":90,"height":44},{"top":51,"left":5,"width":90,"height":44}]'),
+(2,'Hero Left',false,'[{"top":5,"left":5,"width":58,"height":90},{"top":5,"left":65,"width":30,"height":90}]'),
+(2,'Hero Right',false,'[{"top":5,"left":5,"width":30,"height":90},{"top":5,"left":38,"width":57,"height":90}]'),
+(2,'Golden Split',false,'[{"top":5,"left":5,"width":61,"height":90},{"top":5,"left":68,"width":27,"height":90}]'),
+(2,'Diagonal',false,'[{"top":5,"left":5,"width":40,"height":40},{"top":55,"left":55,"width":40,"height":40}]'),
+(2,'Floating Pair',false,'[{"top":20,"left":5,"width":40,"height":60},{"top":20,"left":55,"width":40,"height":60}]'),
+(2,'Portrait Pair',false,'[{"top":5,"left":20,"width":25,"height":90},{"top":5,"left":55,"width":25,"height":90}]'),
+(2,'Landscape Pair',false,'[{"top":25,"left":5,"width":90,"height":30},{"top":60,"left":5,"width":90,"height":30}]'),
+(2,'Inset Contrast',false,'[{"top":5,"left":5,"width":90,"height":60},{"top":68,"left":35,"width":30,"height":25}]'),
+(2,'Top Strip',false,'[{"top":5,"left":5,"width":90,"height":35},{"top":45,"left":20,"width":60,"height":50}]'),
+(2,'Bottom Strip',false,'[{"top":10,"left":20,"width":60,"height":50},{"top":65,"left":5,"width":90,"height":30}]'),
+(2,'Left Column',false,'[{"top":5,"left":5,"width":35,"height":90},{"top":5,"left":45,"width":50,"height":90}]'),
+(2,'Right Column',false,'[{"top":5,"left":5,"width":50,"height":90},{"top":5,"left":60,"width":35,"height":90}]'),
+(2,'Centered Duo',false,'[{"top":20,"left":15,"width":30,"height":60},{"top":20,"left":55,"width":30,"height":60}]'),
+(2,'Offset Stack',false,'[{"top":5,"left":10,"width":80,"height":40},{"top":50,"left":20,"width":60,"height":40}]'),
+(2,'Gallery Duo',false,'[{"top":10,"left":5,"width":40,"height":80},{"top":10,"left":55,"width":40,"height":80}]'),
+(2,'Asym Duo',false,'[{"top":5,"left":5,"width":60,"height":60},{"top":55,"left":55,"width":35,"height":35}]'),
+(2,'Modern Offset',false,'[{"top":15,"left":5,"width":50,"height":70},{"top":5,"left":60,"width":35,"height":50}]'),
+(2,'Editorial Pair',false,'[{"top":5,"left":10,"width":35,"height":90},{"top":5,"left":50,"width":40,"height":60}]');
+
+-- =====================================================
+-- SINGLE PAGE — 3 IMAGES (20)
+-- =====================================================
+
+(3,'Three Columns',false,'[{"top":5,"left":5,"width":28,"height":90},{"top":5,"left":36,"width":28,"height":90},{"top":5,"left":67,"width":28,"height":90}]'),
+(3,'Hero Left Two Right',false,'[{"top":5,"left":5,"width":55,"height":90},{"top":5,"left":63,"width":32,"height":44},{"top":51,"left":63,"width":32,"height":44}]'),
+(3,'Hero Top',false,'[{"top":5,"left":5,"width":90,"height":44},{"top":51,"left":5,"width":44,"height":44},{"top":51,"left":51,"width":44,"height":44}]'),
+(3,'Grid 2+1',false,'[{"top":5,"left":5,"width":44,"height":44},{"top":5,"left":51,"width":44,"height":44},{"top":51,"left":5,"width":90,"height":44}]'),
+(3,'Diagonal Flow',false,'[{"top":5,"left":5,"width":40,"height":40},{"top":30,"left":45,"width":45,"height":45},{"top":60,"left":10,"width":35,"height":35}]'),
+(3,'Vertical Stack',false,'[{"top":5,"left":30,"width":40,"height":28},{"top":36,"left":30,"width":40,"height":28},{"top":67,"left":30,"width":40,"height":28}]'),
+(3,'Inset Trio',false,'[{"top":5,"left":5,"width":90,"height":55},{"top":65,"left":10,"width":35,"height":30},{"top":65,"left":55,"width":35,"height":30}]'),
+(3,'Gallery Row',false,'[{"top":20,"left":5,"width":28,"height":60},{"top":20,"left":36,"width":28,"height":60},{"top":20,"left":67,"width":28,"height":60}]'),
+(3,'Hero Center',false,'[{"top":5,"left":25,"width":50,"height":60},{"top":70,"left":5,"width":40,"height":25},{"top":70,"left":55,"width":40,"height":25}]'),
+(3,'Asym Editorial',false,'[{"top":5,"left":5,"width":50,"height":50},{"top":10,"left":60,"width":35,"height":35},{"top":55,"left":55,"width":40,"height":35}]'),
+(3,'Tall Trio',false,'[{"top":5,"left":5,"width":28,"height":90},{"top":5,"left":36,"width":28,"height":90},{"top":5,"left":67,"width":28,"height":90}]'),
+(3,'Bottom Hero',false,'[{"top":5,"left":10,"width":35,"height":40},{"top":5,"left":55,"width":35,"height":40},{"top":50,"left":5,"width":90,"height":45}]'),
+(3,'Corner Emphasis',false,'[{"top":5,"left":5,"width":45,"height":45},{"top":5,"left":55,"width":40,"height":40},{"top":55,"left":10,"width":45,"height":40}]'),
+(3,'Modern Split',false,'[{"top":5,"left":5,"width":60,"height":44},{"top":51,"left":5,"width":28,"height":44},{"top":51,"left":37,"width":28,"height":44}]'),
+(3,'Centered Stack',false,'[{"top":5,"left":25,"width":50,"height":28},{"top":36,"left":25,"width":50,"height":28},{"top":67,"left":25,"width":50,"height":28}]'),
+(3,'Offset Gallery',false,'[{"top":10,"left":5,"width":28,"height":70},{"top":20,"left":36,"width":28,"height":60},{"top":30,"left":67,"width":28,"height":50}]'),
+(3,'Hero Diagonal',false,'[{"top":5,"left":5,"width":60,"height":60},{"top":70,"left":10,"width":35,"height":25},{"top":40,"left":70,"width":25,"height":45}]'),
+(3,'Magazine Style',false,'[{"top":5,"left":5,"width":40,"height":80},{"top":5,"left":50,"width":45,"height":35},{"top":45,"left":50,"width":45,"height":40}]'),
+(3,'Balanced Trio',false,'[{"top":10,"left":10,"width":30,"height":60},{"top":10,"left":45,"width":30,"height":60},{"top":10,"left":80,"width":10,"height":60}]'),
+(3,'Clean Grid',false,'[{"top":10,"left":5,"width":28,"height":70},{"top":10,"left":36,"width":28,"height":70},{"top":10,"left":67,"width":28,"height":70}]');
+
+-- =====================================================
+-- SINGLE PAGE — 4 IMAGES (20)
+-- =====================================================
+
+(4,'2x2 Grid',false,'[{"top":5,"left":5,"width":44,"height":44},{"top":5,"left":51,"width":44,"height":44},{"top":51,"left":5,"width":44,"height":44},{"top":51,"left":51,"width":44,"height":44}]'),
+(4,'Hero Top Grid',false,'[{"top":5,"left":5,"width":90,"height":44},{"top":51,"left":5,"width":28,"height":44},{"top":51,"left":36,"width":28,"height":44},{"top":51,"left":67,"width":28,"height":44}]'),
+(4,'Hero Left Grid',false,'[{"top":5,"left":5,"width":44,"height":90},{"top":5,"left":51,"width":44,"height":28},{"top":36,"left":51,"width":44,"height":28},{"top":67,"left":51,"width":44,"height":28}]'),
+(4,'Vertical Stack',false,'[{"top":5,"left":30,"width":40,"height":20},{"top":28,"left":30,"width":40,"height":20},{"top":51,"left":30,"width":40,"height":20},{"top":74,"left":30,"width":40,"height":20}]'),
+(4,'Gallery Row',false,'[{"top":20,"left":5,"width":21,"height":60},{"top":20,"left":28,"width":21,"height":60},{"top":20,"left":51,"width":21,"height":60},{"top":20,"left":74,"width":21,"height":60}]'),
+(4,'Asym Editorial',false,'[{"top":5,"left":5,"width":50,"height":50},{"top":10,"left":60,"width":35,"height":35},{"top":55,"left":10,"width":35,"height":35},{"top":60,"left":55,"width":40,"height":30}]'),
+(4,'Modern Grid',false,'[{"top":10,"left":10,"width":35,"height":35},{"top":10,"left":55,"width":35,"height":35},{"top":55,"left":10,"width":35,"height":35},{"top":55,"left":55,"width":35,"height":35}]'),
+(4,'Corner Focus',false,'[{"top":5,"left":5,"width":40,"height":40},{"top":5,"left":55,"width":40,"height":40},{"top":55,"left":5,"width":40,"height":40},{"top":60,"left":60,"width":35,"height":35}]'),
+(4,'Inset Grid',false,'[{"top":10,"left":10,"width":35,"height":35},{"top":10,"left":55,"width":35,"height":35},{"top":55,"left":10,"width":35,"height":35},{"top":55,"left":55,"width":35,"height":35}]'),
+(4,'Magazine Split',false,'[{"top":5,"left":5,"width":60,"height":44},{"top":51,"left":5,"width":60,"height":44},{"top":5,"left":68,"width":27,"height":44},{"top":51,"left":68,"width":27,"height":44}]'),
+(4,'Wide Row',false,'[{"top":5,"left":5,"width":44,"height":40},{"top":5,"left":51,"width":44,"height":40},{"top":55,"left":5,"width":44,"height":40},{"top":55,"left":51,"width":44,"height":40}]'),
+(4,'Tall Grid',false,'[{"top":5,"left":20,"width":25,"height":40},{"top":5,"left":55,"width":25,"height":40},{"top":50,"left":20,"width":25,"height":40},{"top":50,"left":55,"width":25,"height":40}]'),
+(4,'Offset Blocks',false,'[{"top":10,"left":5,"width":40,"height":35},{"top":10,"left":55,"width":35,"height":30},{"top":55,"left":10,"width":35,"height":30},{"top":55,"left":55,"width":40,"height":35}]'),
+(4,'Clean Columns',false,'[{"top":5,"left":5,"width":21,"height":90},{"top":5,"left":28,"width":21,"height":90},{"top":5,"left":51,"width":21,"height":90},{"top":5,"left":74,"width":21,"height":90}]'),
+(4,'Split Focus',false,'[{"top":5,"left":5,"width":45,"height":90},{"top":5,"left":55,"width":40,"height":28},{"top":36,"left":55,"width":40,"height":28},{"top":67,"left":55,"width":40,"height":28}]'),
+(4,'Centered Blocks',false,'[{"top":10,"left":20,"width":25,"height":35},{"top":10,"left":55,"width":25,"height":35},{"top":55,"left":20,"width":25,"height":35},{"top":55,"left":55,"width":25,"height":35}]'),
+(4,'Gallery Wall',false,'[{"top":10,"left":5,"width":40,"height":35},{"top":10,"left":50,"width":40,"height":35},{"top":55,"left":5,"width":40,"height":35},{"top":55,"left":50,"width":40,"height":35}]'),
+(4,'Modern Asym',false,'[{"top":5,"left":5,"width":55,"height":55},{"top":65,"left":5,"width":40,"height":30},{"top":10,"left":65,"width":30,"height":35},{"top":55,"left":55,"width":40,"height":35}]'),
+(4,'Balanced Square',false,'[{"top":15,"left":15,"width":30,"height":30},{"top":15,"left":55,"width":30,"height":30},{"top":55,"left":15,"width":30,"height":30},{"top":55,"left":55,"width":30,"height":30}]'),
+(4,'Editorial Grid',false,'[{"top":5,"left":10,"width":35,"height":40},{"top":5,"left":55,"width":35,"height":40},{"top":50,"left":10,"width":35,"height":40},{"top":50,"left":55,"width":35,"height":40}]');
+
+-- =====================================================
+-- SINGLE PAGE — 5 IMAGES (20)
+-- =====================================================
+
+(5,'Hero Top + Four',false,'[{"top":5,"left":5,"width":90,"height":40},{"top":50,"left":5,"width":21,"height":45},{"top":50,"left":28,"width":21,"height":45},{"top":50,"left":51,"width":21,"height":45},{"top":50,"left":74,"width":21,"height":45}]'),
+(5,'Hero Left Grid',false,'[{"top":5,"left":5,"width":44,"height":90},{"top":5,"left":51,"width":21,"height":28},{"top":36,"left":51,"width":21,"height":28},{"top":67,"left":51,"width":21,"height":28},{"top":36,"left":74,"width":21,"height":28}]'),
+(5,'Two Rows',false,'[{"top":5,"left":5,"width":28,"height":40},{"top":5,"left":36,"width":28,"height":40},{"top":5,"left":67,"width":28,"height":40},{"top":50,"left":20,"width":25,"height":45},{"top":50,"left":55,"width":25,"height":45}]'),
+(5,'Gallery Wall',false,'[{"top":10,"left":5,"width":18,"height":70},{"top":10,"left":26,"width":18,"height":70},{"top":10,"left":47,"width":18,"height":70},{"top":10,"left":68,"width":18,"height":70},{"top":10,"left":89,"width":6,"height":70}]'),
+(5,'Centered Hero',false,'[{"top":10,"left":20,"width":60,"height":40},{"top":55,"left":5,"width":21,"height":35},{"top":55,"left":28,"width":21,"height":35},{"top":55,"left":51,"width":21,"height":35},{"top":55,"left":74,"width":21,"height":35}]'),
+(5,'Asym Editorial',false,'[{"top":5,"left":5,"width":50,"height":50},{"top":10,"left":60,"width":35,"height":30},{"top":45,"left":60,"width":35,"height":25},{"top":60,"left":5,"width":35,"height":30},{"top":60,"left":45,"width":45,"height":30}]'),
+(5,'Clean Grid',false,'[{"top":5,"left":5,"width":28,"height":28},{"top":5,"left":36,"width":28,"height":28},{"top":5,"left":67,"width":28,"height":28},{"top":36,"left":20,"width":28,"height":28},{"top":36,"left":51,"width":28,"height":28}]'),
+(5,'Top Strip + Grid',false,'[{"top":5,"left":5,"width":90,"height":30},{"top":40,"left":5,"width":21,"height":45},{"top":40,"left":28,"width":21,"height":45},{"top":40,"left":51,"width":21,"height":45},{"top":40,"left":74,"width":21,"height":45}]'),
+(5,'Modern Asym',false,'[{"top":5,"left":5,"width":55,"height":45},{"top":55,"left":5,"width":30,"height":30},{"top":55,"left":40,"width":25,"height":30},{"top":5,"left":65,"width":30,"height":30},{"top":40,"left":65,"width":30,"height":30}]'),
+(5,'Balanced Blocks',false,'[{"top":10,"left":10,"width":25,"height":35},{"top":10,"left":40,"width":25,"height":35},{"top":10,"left":70,"width":20,"height":35},{"top":55,"left":25,"width":25,"height":35},{"top":55,"left":55,"width":25,"height":35}]'),
+(5,'Magazine Style',false,'[{"top":5,"left":5,"width":45,"height":80},{"top":5,"left":55,"width":40,"height":25},{"top":35,"left":55,"width":40,"height":25},{"top":65,"left":55,"width":40,"height":25},{"top":65,"left":5,"width":45,"height":25}]'),
+(5,'Inset Hero',false,'[{"top":5,"left":5,"width":90,"height":55},{"top":65,"left":5,"width":21,"height":30},{"top":65,"left":28,"width":21,"height":30},{"top":65,"left":51,"width":21,"height":30},{"top":65,"left":74,"width":21,"height":30}]'),
+(5,'Tall Columns',false,'[{"top":5,"left":5,"width":18,"height":90},{"top":5,"left":26,"width":18,"height":90},{"top":5,"left":47,"width":18,"height":90},{"top":5,"left":68,"width":18,"height":90},{"top":5,"left":89,"width":6,"height":90}]'),
+(5,'Offset Grid',false,'[{"top":10,"left":5,"width":28,"height":35},{"top":10,"left":36,"width":28,"height":35},{"top":10,"left":67,"width":28,"height":35},{"top":55,"left":20,"width":28,"height":35},{"top":55,"left":51,"width":28,"height":35}]'),
+(5,'Hero Bottom',false,'[{"top":55,"left":5,"width":90,"height":40},{"top":5,"left":5,"width":21,"height":40},{"top":5,"left":28,"width":21,"height":40},{"top":5,"left":51,"width":21,"height":40},{"top":5,"left":74,"width":21,"height":40}]'),
+(5,'Clean Editorial',false,'[{"top":10,"left":10,"width":35,"height":35},{"top":10,"left":55,"width":35,"height":35},{"top":55,"left":10,"width":35,"height":35},{"top":55,"left":55,"width":35,"height":35},{"top":35,"left":35,"width":30,"height":30}]'),
+(5,'Modern Spread Look',false,'[{"top":5,"left":5,"width":40,"height":90},{"top":5,"left":50,"width":45,"height":25},{"top":35,"left":50,"width":45,"height":25},{"top":65,"left":50,"width":45,"height":25},{"top":65,"left":5,"width":40,"height":25}]'),
+(5,'Balanced Gallery',false,'[{"top":15,"left":5,"width":28,"height":30},{"top":15,"left":36,"width":28,"height":30},{"top":15,"left":67,"width":28,"height":30},{"top":55,"left":20,"width":25,"height":30},{"top":55,"left":55,"width":25,"height":30}]'),
+(5,'Symmetric Five',false,'[{"top":10,"left":20,"width":20,"height":30},{"top":10,"left":45,"width":20,"height":30},{"top":10,"left":70,"width":20,"height":30},{"top":55,"left":30,"width":20,"height":30},{"top":55,"left":55,"width":20,"height":30}]'),
+(5,'Editorial Balance',false,'[{"top":5,"left":5,"width":55,"height":55},{"top":65,"left":5,"width":30,"height":30},{"top":65,"left":40,"width":30,"height":30},{"top":5,"left":65,"width":30,"height":30},{"top":40,"left":65,"width":30,"height":30}]');
+
+-- =====================================================
+-- SINGLE PAGE — 6–10 IMAGES (20)
+-- =====================================================
+
+(6,'3x2 Grid',false,'[{"top":5,"left":5,"width":28,"height":44},{"top":5,"left":36,"width":28,"height":44},{"top":5,"left":67,"width":28,"height":44},{"top":51,"left":5,"width":28,"height":44},{"top":51,"left":36,"width":28,"height":44},{"top":51,"left":67,"width":28,"height":44}]'),
+(7,'Gallery Seven',false,'[{"top":5,"left":5,"width":21,"height":40},{"top":5,"left":28,"width":21,"height":40},{"top":5,"left":51,"width":21,"height":40},{"top":5,"left":74,"width":21,"height":40},{"top":50,"left":15,"width":21,"height":40},{"top":50,"left":38,"width":21,"height":40},{"top":50,"left":61,"width":21,"height":40}]'),
+(8,'4x2 Grid',false,'[{"top":5,"left":5,"width":21,"height":44},{"top":5,"left":28,"width":21,"height":44},{"top":5,"left":51,"width":21,"height":44},{"top":5,"left":74,"width":21,"height":44},{"top":51,"left":5,"width":21,"height":44},{"top":51,"left":28,"width":21,"height":44},{"top":51,"left":51,"width":21,"height":44},{"top":51,"left":74,"width":21,"height":44}]'),
+(9,'3x3 Grid',false,'[{"top":5,"left":5,"width":28,"height":28},{"top":5,"left":36,"width":28,"height":28},{"top":5,"left":67,"width":28,"height":28},{"top":36,"left":5,"width":28,"height":28},{"top":36,"left":36,"width":28,"height":28},{"top":36,"left":67,"width":28,"height":28},{"top":67,"left":5,"width":28,"height":28},{"top":67,"left":36,"width":28,"height":28},{"top":67,"left":67,"width":28,"height":28}]'),
+(10,'5x2 Grid',false,'[{"top":5,"left":5,"width":16,"height":44},{"top":5,"left":23,"width":16,"height":44},{"top":5,"left":41,"width":16,"height":44},{"top":5,"left":59,"width":16,"height":44},{"top":5,"left":77,"width":16,"height":44},{"top":51,"left":5,"width":16,"height":44},{"top":51,"left":23,"width":16,"height":44},{"top":51,"left":41,"width":16,"height":44},{"top":51,"left":59,"width":16,"height":44},{"top":51,"left":77,"width":16,"height":44}]');
+
+-- =====================================================
+-- TWO-PAGE SPREADS (30)
+-- Canvas: 200 × 100
+-- =====================================================
+
+(2,'Spread Hero Left',true,'[{"top":5,"left":5,"width":90,"height":90},{"top":5,"left":110,"width":80,"height":90}]'),
+(3,'Spread Hero + Two',true,'[{"top":5,"left":5,"width":90,"height":90},{"top":5,"left":110,"width":80,"height":44},{"top":51,"left":110,"width":80,"height":44}]'),
+(4,'Balanced Spread Grid',true,'[{"top":5,"left":5,"width":90,"height":44},{"top":51,"left":5,"width":90,"height":44},{"top":5,"left":110,"width":80,"height":44},{"top":51,"left":110,"width":80,"height":44}]'),
+(5,'Editorial Spread',true,'[{"top":5,"left":5,"width":90,"height":90},{"top":5,"left":110,"width":38,"height":44},{"top":5,"left":152,"width":38,"height":44},{"top":51,"left":110,"width":38,"height":44},{"top":51,"left":152,"width":38,"height":44}]'),
+(6,'Gallery Spread',true,'[{"top":5,"left":5,"width":44,"height":44},{"top":51,"left":5,"width":44,"height":44},{"top":5,"left":51,"width":44,"height":44},{"top":51,"left":51,"width":44,"height":44},{"top":5,"left":110,"width":80,"height":44},{"top":51,"left":110,"width":80,"height":44}]'),
+(7,'Hero Spread + Grid',true,'[{"top":5,"left":5,"width":90,"height":90},{"top":5,"left":110,"width":25,"height":28},{"top":36,"left":110,"width":25,"height":28},{"top":67,"left":110,"width":25,"height":28},{"top":5,"left":138,"width":25,"height":28},{"top":36,"left":138,"width":25,"height":28},{"top":67,"left":138,"width":25,"height":28}]'),
+(8,'Double Grid Spread',true,'[{"top":5,"left":5,"width":44,"height":44},{"top":51,"left":5,"width":44,"height":44},{"top":5,"left":51,"width":44,"height":44},{"top":51,"left":51,"width":44,"height":44},{"top":5,"left":110,"width":44,"height":44},{"top":51,"left":110,"width":44,"height":44},{"top":5,"left":156,"width":34,"height":44},{"top":51,"left":156,"width":34,"height":44}]'),
+(9,'Spread Gallery 9',true,'[{"top":5,"left":5,"width":28,"height":28},{"top":5,"left":36,"width":28,"height":28},{"top":5,"left":67,"width":28,"height":28},{"top":36,"left":5,"width":28,"height":28},{"top":36,"left":36,"width":28,"height":28},{"top":36,"left":67,"width":28,"height":28},{"top":5,"left":110,"width":80,"height":28},{"top":36,"left":110,"width":80,"height":28},{"top":67,"left":110,"width":80,"height":28}]'),
+(10,'Max Spread Grid',true,'[{"top":5,"left":5,"width":16,"height":44},{"top":5,"left":23,"width":16,"height":44},{"top":5,"left":41,"width":16,"height":44},{"top":5,"left":59,"width":16,"height":44},{"top":5,"left":77,"width":16,"height":44},{"top":51,"left":5,"width":16,"height":44},{"top":51,"left":23,"width":16,"height":44},{"top":51,"left":41,"width":16,"height":44},{"top":51,"left":59,"width":16,"height":44},{"top":51,"left":77,"width":16,"height":44}]');

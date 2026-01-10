@@ -1,0 +1,169 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Cormorant+Garamond:wght@400;600&family=Dancing+Script:wght@400;700&family=Montserrat:wght@400;600;700&display=swap');
+
+@import "tailwindcss";
+
+/* Custom theme using CSS variables for Tailwind v4 */
+@theme {
+  --color-catalog-bg: #fdfcfb;
+  --color-catalog-text: #2d2621;
+  --color-catalog-accent: #a0c4ff;
+
+  /* Bold Rainbow Pastel Range */
+  --color-pastel-red: #ffadad;
+  --color-pastel-orange: #ffd6a5;
+  --color-pastel-yellow: #fdffb6;
+  --color-pastel-green: #caffbf;
+  --color-pastel-blue: #9bf6ff;
+  --color-pastel-indigo: #a0c4ff;
+  --color-pastel-purple: #bdb2ff;
+  --color-pastel-pink: #ffc6ff;
+
+  --color-rainbow-gradient: linear-gradient(to right, #ffadad, #ffd6a5, #fdffb6, #caffbf, #9bf6ff, #a0c4ff, #bdb2ff, #ffc6ff);
+
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Inter", sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-catalog-bg);
+    color: var(--color-catalog-text);
+    font-family: var(--font-sans);
+    /* Switching most text to sans for a cleaner rainbow look */
+  }
+}
+
+@layer utilities {
+  .bg-catalog-bg {
+    background-color: var(--color-catalog-bg);
+  }
+
+  .bg-catalog-accent {
+    background-color: var(--color-catalog-accent);
+  }
+
+  .text-catalog-text {
+    color: var(--color-catalog-text);
+  }
+
+  .text-catalog-accent {
+    color: var(--color-catalog-accent);
+  }
+
+  .border-catalog-accent {
+    border-color: var(--color-catalog-accent);
+  }
+
+  .ring-catalog-accent {
+    --tw-ring-color: var(--color-catalog-accent);
+  }
+
+  .bg-rainbow {
+    background: var(--color-rainbow-gradient);
+  }
+
+  .text-rainbow {
+    background: var(--color-rainbow-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .border-rainbow {
+    border-image: var(--color-rainbow-gradient) 1;
+  }
+
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+
+  .font-sans {
+    font-family: var(--font-sans);
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+
+  /* Responsive fluid layout utilities */
+  .container-fluid {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  @media (min-width: 1280px) {
+    .container-fluid {
+      padding-left: 3rem;
+      padding-right: 3rem;
+    }
+  }
+
+  .max-w-wide {
+    max-width: 1920px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Image resize handles in editor */
+  .prose img {
+    resize: both;
+    overflow: hidden;
+    max-width: 100%;
+  }
+
+  .prose img:hover {
+    outline: 2px solid var(--color-catalog-accent);
+    outline-offset: 2px;
+  }
+
+  .prose img:active {
+    cursor: se-resize;
+  }
+
+  /* Animation for toolbar slide down */
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px) translateX(-50%);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) translateX(-50%);
+    }
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.2s ease-out forwards;
+  }
+}
