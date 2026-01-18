@@ -63,10 +63,10 @@ async function fetchLibraryAssets(category: string, familyId?: string) {
     return data || [];
 }
 
-type Tab = 'uploads' | 'backgrounds' | 'stickers' | 'frames' | 'ribbons';
+type Tab = 'uploads' | 'backgrounds' | 'stickers' | 'frames' | 'ribbons' | 'layouts';
 
 export function AssetLibrary() {
-    const { album, uploadMedia, moveFromLibrary, isSaving, addAsset, currentPageIndex, uploadProgress, updatePage } = useAlbum();
+    const { album, uploadMedia, moveFromLibrary, isSaving, addAsset, currentPageIndex, uploadProgress } = useAlbum();
     const [activeTab, setActiveTab] = useState<Tab>('uploads');
     const [libraryAssets, setLibraryAssets] = useState<any[]>([]);
     const [isLoadingAssets, setIsLoadingAssets] = useState(false);

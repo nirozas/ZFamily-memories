@@ -1,5 +1,25 @@
 
-import { type AlbumLayout } from './defaultLayouts';
+// Layout configuration types
+interface LayoutFrame {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    rotation?: number;
+    z_index: number;
+}
+
+export interface AlbumLayout {
+    id: string;
+    name: string;
+    category: string;
+    image_count: number;
+    aspect_ratio: string;
+    dimension_type: string;
+    is_spread: boolean;
+    backgroundImage?: string;
+    config: LayoutFrame[];
+}
 
 export const PROFESSIONAL_LAYOUTS: AlbumLayout[] = [
     { id: 'pro-1-1', name: 'Grid 1-1', category: 'Symmetric', image_count: 1, aspect_ratio: '3:2', dimension_type: 'A4_LANDSCAPE', is_spread: false, backgroundImage: 'https://res.cloudinary.com/dhdarmxup/image/upload/v1/paper_texture_a4_landscape_1768620681016.png', config: [{ "left": 0, "top": 0, "width": 100, "height": 100, "rotation": 0, "z_index": 0 }] },

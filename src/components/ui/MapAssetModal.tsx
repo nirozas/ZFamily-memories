@@ -88,7 +88,6 @@ export function MapAssetModal({ isOpen, onClose, onAddMap, onAddSnapshot, existi
                 center: [mapCenter.lng, mapCenter.lat],
                 zoom: mapZoom,
                 attributionControl: false,
-                preserveDrawingBuffer: true,
             });
 
             map.addControl(new maplibregl.NavigationControl(), 'top-right');

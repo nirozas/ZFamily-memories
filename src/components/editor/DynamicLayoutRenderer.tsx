@@ -1,8 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { type AlbumLayout } from '../../data/defaultLayouts';
 import { cn } from '../../lib/utils';
 import { Image as ImageIcon } from 'lucide-react';
+
+// Layout configuration types
+interface LayoutFrame {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    rotation?: number;
+    z_index: number;
+}
+
+interface AlbumLayout {
+    id: string;
+    name: string;
+    category: string;
+    image_count: number;
+    aspect_ratio: string;
+    dimension_type: string;
+    is_spread: boolean;
+    backgroundImage?: string;
+    config: LayoutFrame[];
+}
 
 interface DynamicLayoutRendererProps {
     layoutId?: string;
