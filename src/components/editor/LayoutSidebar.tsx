@@ -235,6 +235,32 @@ export function LayoutSidebar({ activePageId }: LayoutSidebarProps) {
                     "grid gap-3 pb-8",
                     viewMode === 'spread' ? "grid-cols-1" : "grid-cols-2"
                 )}>
+                    {/* SPECIAL: Blank Canvas Layout */}
+                    {!loading && filterCount === 'all' && searchQuery === '' && (
+                        <button
+                            onClick={() => handleApply({
+                                id: 'freeform',
+                                name: 'freeform',
+                                image_count: 0,
+                                target_ratio: viewMode === 'spread' ? 'landscape' : 'portrait',
+                                config: [],
+                                category: 'Basic'
+                            })}
+                            className={cn(
+                                "group relative bg-white border border-catalog-accent/20 border-dashed rounded-xl overflow-hidden hover:border-catalog-accent/40 hover:shadow-xl transition-all p-2",
+                                viewMode === 'spread' ? "aspect-[2/1]" : "aspect-square"
+                            )}
+                        >
+                            <div className="absolute top-2 left-2 z-20">
+                                <span className="text-[7px] font-black text-white px-2 py-0.5 bg-gray-400 rounded-full opacity-80 uppercase tracking-tighter">FREEFORM</span>
+                            </div>
+                            <div className="w-full h-full relative bg-gray-50/50 rounded-lg flex flex-col items-center justify-center gap-2 border border-dashed border-gray-200">
+                                <Plus className="w-5 h-5 text-catalog-accent/30" />
+                                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-catalog-text/40">Blank Canvas</span>
+                            </div>
+                        </button>
+                    )}
+
                     {loading ? (
                         Array.from({ length: 8 }).map((_, i) => (
                             <SkeletonThumbnail key={i} viewMode={viewMode} />

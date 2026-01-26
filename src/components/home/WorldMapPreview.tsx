@@ -30,10 +30,8 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
 
     // Map Styles Definition
     const MAP_STYLES: Record<string, any> = {
-        light: "https://tiles.openfreemap.org/styles/positron",
         streets: "https://tiles.openfreemap.org/styles/liberty",
-        dark: "https://tiles.openfreemap.org/styles/dark-matter",
-        satellite: {
+        realistic: {
             version: 8,
             sources: {
                 'satellite': {
@@ -44,10 +42,12 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
                 }
             },
             layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }]
-        }
+        },
+        light: "https://tiles.openfreemap.org/styles/positron",
+        dark: "https://tiles.openfreemap.org/styles/dark-matter",
     };
 
-    const [currentStyle, setCurrentStyle] = useState<string>('streets');
+    const [currentStyle, setCurrentStyle] = useState<string>('realistic');
 
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<maplibregl.Map | null>(null);
@@ -69,15 +69,37 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
 
                 if (albumsError) console.error('Albums fetch error:', albumsError);
 
-                // Fetch Events
-                const { data: eventsData, error: eventsError } = await supabase
+                // Fetch Events - Use select('*') to match HeritageMap fix
+                const { data: eventsData, error: eventsError } = await (supabase as any)
                     .from('events')
-                    .select('id, title, location, country, geotag, latitude, longitude, event_date, cover_image_path')
-                    .eq('family_id', String(familyId));  // Explicit string cast to prevent UUID mismatch
+                    .select('*')
+                    .eq('family_id', String(familyId));
 
                 if (eventsError) console.error('Events fetch error:', eventsError);
 
                 const normalizedAlbums: LocationData[] = [];
+
+                // 2. Optimized Coordinate Parser (Shared logic with HeritageMap)
+                const parseCoords = (item: any) => {
+                    let lat = NaN;
+                    let lng = NaN;
+                    let tag = item.geotag || item.geotags || item.location_data;
+                    if (typeof tag === 'string') {
+                        try { tag = JSON.parse(tag); } catch (e) { tag = null; }
+                    }
+                    if (Array.isArray(tag) && tag.length === 2) {
+                        lng = parseFloat(tag[0]);
+                        lat = parseFloat(tag[1]);
+                    } else if (tag && typeof tag === 'object') {
+                        lat = parseFloat(tag.lat ?? tag.latitude ?? NaN);
+                        lng = parseFloat(tag.lng ?? tag.lon ?? tag.longitude ?? NaN);
+                    }
+                    if ((isNaN(lat) || isNaN(lng)) && item.latitude && item.longitude) {
+                        lat = parseFloat(item.latitude);
+                        lng = parseFloat(item.longitude);
+                    }
+                    return { lat, lng };
+                };
 
                 // Process Albums
                 (albumsData || []).forEach((a: any) => {
@@ -87,65 +109,45 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
                     }
                     const cover = a.cover_image_url || (config.cover && config.cover.url) || undefined;
 
-                    // 1. Album-level geotag
-                    let tagSource = a.geotag;
-                    if (!tagSource && config.geotag) tagSource = config.geotag;
-
-                    if (typeof tagSource === 'string') {
-                        try { tagSource = JSON.parse(tagSource); } catch (e) { tagSource = null; }
+                    // 1. Album-level
+                    const albumCoords = parseCoords(a);
+                    if (!isNaN(albumCoords.lat) && !isNaN(albumCoords.lng) && albumCoords.lat !== 0 && albumCoords.lng !== 0) {
+                        normalizedAlbums.push({
+                            id: a.id,
+                            type: 'album',
+                            title: a.title,
+                            location: a.location || config.location || '',
+                            country: a.country || config.country,
+                            lat: albumCoords.lat,
+                            lng: albumCoords.lng,
+                            coverImage: cover,
+                            date: a.created_at,
+                            link: `/album/${a.id}`
+                        });
                     }
 
-                    if (tagSource) {
-                        const rawLat = tagSource.lat ?? tagSource.latitude;
-                        const rawLng = tagSource.lng ?? tagSource.lon ?? tagSource.longitude;
-                        const parsedLat = Number(rawLat);
-                        const parsedLng = Number(rawLng);
-
-                        if (!isNaN(parsedLat) && !isNaN(parsedLng) && parsedLat !== 0 && parsedLng !== 0) {
-                            normalizedAlbums.push({
-                                id: a.id,
-                                type: 'album',
-                                title: a.title,
-                                location: a.location || config.location || '',
-                                country: a.country || config.country,
-                                lat: parsedLat,
-                                lng: parsedLng,
-                                coverImage: cover,
-                                date: a.created_at,
-                                link: `/album/${a.id}`
-                            });
-                        }
-                    }
-
-                    // 2. Page-level assets (from database)
+                    // 2. Page-level assets
                     if (a.pages && Array.isArray(a.pages)) {
                         a.pages.forEach((p: any) => {
                             const assets = p.assets || [];
                             assets.forEach((asset: any) => {
-                                // Assets from DB have their data in the 'config' column
                                 let assetConfig = asset.config || {};
                                 if (typeof assetConfig === 'string') {
                                     try { assetConfig = JSON.parse(assetConfig); } catch (e) { assetConfig = {}; }
                                 }
-
-                                // Type is stored in config.originalType
                                 const assetType = assetConfig.originalType || asset.asset_type || asset.type;
+                                const assetCoords = parseCoords({ ...asset, geotag: assetConfig });
 
-                                // Coordinates are stored in config.lat/lng
-                                const lat = Number(assetConfig.lat ?? assetConfig.latitude ?? asset.lat);
-                                const lng = Number(assetConfig.lng ?? assetConfig.longitude ?? asset.lng);
-
-                                // Single Location Asset
                                 if (assetType === 'location') {
-                                    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                                    if (!isNaN(assetCoords.lat) && !isNaN(assetCoords.lng) && assetCoords.lat !== 0 && assetCoords.lng !== 0) {
                                         normalizedAlbums.push({
                                             id: asset.id || `${a.id}-p${p.page_number}-loc`,
                                             type: 'album',
                                             title: assetConfig.name || assetConfig.content || assetConfig.address || `${a.title} - Page ${p.page_number}`,
                                             location: assetConfig.content || assetConfig.address || '',
                                             country: '',
-                                            lat: lat,
-                                            lng: lng,
+                                            lat: assetCoords.lat,
+                                            lng: assetCoords.lng,
                                             coverImage: assetConfig.previewImage || cover,
                                             date: a.created_at,
                                             link: `/album/${a.id}?page=${p.page_number}`
@@ -153,12 +155,11 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
                                     }
                                 }
 
-                                // Map Asset with Places
                                 const mapConfig = assetConfig.mapConfig;
                                 if (assetType === 'map' && mapConfig?.places && Array.isArray(mapConfig.places)) {
                                     mapConfig.places.forEach((place: any, idx: number) => {
-                                        const pLat = Number(place.lat);
-                                        const pLng = Number(place.lng);
+                                        const pLat = parseFloat(place.lat);
+                                        const pLng = parseFloat(place.lng);
                                         if (!isNaN(pLat) && !isNaN(pLng) && pLat !== 0 && pLng !== 0) {
                                             normalizedAlbums.push({
                                                 id: `${asset.id}-place-${idx}`,
@@ -183,25 +184,21 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
                 // Process Events
                 const normalizedEvents: LocationData[] = (eventsData || [])
                     .map((e: any) => {
-                        let tag = e.geotag;
-                        if (typeof tag === 'string') {
-                            try { tag = JSON.parse(tag); } catch (err) { tag = null; }
+                        const { lat, lng } = parseCoords(e);
+
+                        // Extract cover image from content.assets
+                        let coverUrl = undefined;
+                        let content = e.content;
+                        if (typeof content === 'string') {
+                            try { content = JSON.parse(content); } catch (err) { content = {}; }
                         }
 
-                        // Robust Coordinate Extraction
-                        let lat = null, lng = null;
-                        if (Array.isArray(tag) && tag.length === 2) {
-                            [lng, lat] = tag;
-                        } else if (tag && typeof tag === 'object') {
-                            lat = tag.lat ?? tag.latitude;
-                            lng = tag.lng ?? tag.lon ?? tag.longitude;
+                        if (content?.assets?.length > 0) {
+                            const firstAsset = content.assets.find((a: any) => a.type === 'image' || a.type === 'video');
+                            if (firstAsset) coverUrl = firstAsset.url;
                         }
 
-                        // Fallback to root columns
-                        if ((!lat || !lng) && e.latitude && e.longitude) {
-                            lat = e.latitude;
-                            lng = e.longitude;
-                        }
+                        if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return null;
 
                         return {
                             id: e.id,
@@ -209,14 +206,14 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
                             title: e.title,
                             location: e.location || '',
                             country: e.country,
-                            lat: Number(lat),
-                            lng: Number(lng),
-                            coverImage: e.cover_image_path ? supabase.storage.from('family_media').getPublicUrl(e.cover_image_path).data.publicUrl : undefined,
+                            lat,
+                            lng,
+                            coverImage: coverUrl,
                             date: e.event_date,
                             link: `/event/${e.id}/view`
                         };
                     })
-                    .filter(a => !isNaN(a.lat) && !isNaN(a.lng) && a.lat !== 0 && a.lng !== 0);
+                    .filter((item: any) => item !== null) as LocationData[];
 
                 setLocations([...normalizedAlbums, ...normalizedEvents]);
             } catch (error) {
@@ -254,9 +251,10 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
 
         const map = new maplibregl.Map({
             container: mapContainerRef.current,
-            style: MAP_STYLES['streets'],
+            style: MAP_STYLES['realistic'],  // Use new default immediately
             center: [0, 20],
             zoom: 1.2,
+            pitch: 0, // Flattened map as requested
             attributionControl: false,
             interactive: true,
             renderWorldCopies: false,
@@ -285,11 +283,23 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
                     const [lat, lng] = key.split(',').map(Number);
                     const el = document.createElement('div');
                     const count = locsAtPlace.length;
+                    const representativeLoc = locsAtPlace[0];
+                    const hasImage = representativeLoc.coverImage;
 
-                    // Marker style
-                    el.className = 'custom-world-marker w-6 h-6 rounded-full shadow-lg cursor-pointer transform hover:scale-125 transition-all bg-white border-2 border-white flex items-center justify-center';
-                    el.style.backgroundColor = getCountryColor(locsAtPlace[0].country);
-                    el.innerHTML = count > 1 ? `<span class="text-[9px] font-black text-white drop-shadow-sm">${count}</span>` : '';
+                    // Marker styling synchronized with Heritage Map photo pins
+                    el.className = 'custom-world-marker w-8 h-8 rounded-full shadow-lg cursor-pointer transform hover:scale-125 transition-all border-2 border-white flex items-center justify-center overflow-hidden bg-white';
+
+                    if (hasImage) {
+                        el.style.backgroundImage = `url(${representativeLoc.coverImage})`;
+                        el.style.backgroundSize = 'cover';
+                        el.style.backgroundPosition = 'center';
+                    } else {
+                        el.style.backgroundColor = getCountryColor(representativeLoc.country);
+                    }
+
+                    el.innerHTML = count > 1
+                        ? `<div class="bg-black/40 backdrop-blur-sm w-full h-full flex items-center justify-center font-black text-white text-[10px] drop-shadow-sm">${count}</div>`
+                        : (hasImage ? '' : `<div class="text-white"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zM7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 2.88-2.88 7.19-5 9.88C9.92 16.19 7 11.88 7 9z"/><circle cx="12" cy="9" r="2.5"/></svg></div>`);
 
                     // Create Rich Popup Content with multiple "windows"
                     const popupContent = document.createElement('div');
@@ -303,7 +313,7 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
                             : `<div class="text-catalog-accent/10"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>`
                         }
                                  <div class="absolute top-2 left-2 bg-black/40 backdrop-blur-sm text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-widest shadow-sm">
-                                    ${loc.type === 'album' ? 'Archive' : 'Story'}
+                                    ${loc.type === 'album' ? 'Archive' : 'Moment'}
                                  </div>
                             </div>
                             <div class="p-3">
@@ -445,7 +455,7 @@ export function WorldMapPreview({ familyId }: WorldMapPreviewProps) {
                     </div>
                     <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-catalog-accent/10 flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-orange-600"></div>
-                        <span className="text-[10px] font-bold text-catalog-text uppercase tracking-widest">Stories</span>
+                        <span className="text-[10px] font-bold text-catalog-text uppercase tracking-widest">Moments</span>
                     </div>
                 </div>
 

@@ -9,8 +9,10 @@ interface AuthContextType {
     profile: Profile | null;
     userRole: UserRole | null;
     familyId: string | null;
+    googleAccessToken: string | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+    signInWithGoogle: () => Promise<{ error: AuthError | null }>;
     signUp: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>;
     signOut: () => Promise<void>;
     useInviteCode: (code: string) => Promise<{ success: boolean; error?: string }>;
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [userRole, setUserRole] = useState<UserRole | null>(null);
     const [familyId, setFamilyId] = useState<string | null>(null);
+    const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     // Check if Supabase is properly configured
@@ -67,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
+            setGoogleAccessToken(session?.provider_token ?? null);
             if (session?.user) {
                 fetchProfile(session.user.id);
             }
@@ -80,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             (_event, session) => {
                 setSession(session);
                 setUser(session?.user ?? null);
+                setGoogleAccessToken(session?.provider_token ?? null);
                 if (session?.user) {
                     fetchProfile(session.user.id);
                 } else {
@@ -159,6 +164,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error };
     };
 
+    const signInWithGoogle = async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback`,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                    scope: 'openid email profile https://www.googleapis.com/auth/photospicker.mediaitems.readonly https://www.googleapis.com/auth/photoslibrary.appendonly',
+                }
+            }
+        });
+        return { error: error as AuthError | null };
+    };
+
     const signUp = async (email: string, password: string, fullName?: string) => {
         // Sign up the user
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
@@ -194,8 +214,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             profile,
             userRole,
             familyId,
+            googleAccessToken,
             loading,
             signIn,
+            signInWithGoogle,
             signUp,
             signOut,
             useInviteCode,

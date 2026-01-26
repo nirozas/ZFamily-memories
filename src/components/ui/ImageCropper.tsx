@@ -111,8 +111,8 @@ export function ImageCropper({ src, onCropComplete, onCancel }: ImageCropperProp
                             key={preset.label}
                             onClick={() => setAspect(preset.value)}
                             className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${aspect === preset.value
-                                    ? 'bg-catalog-accent text-white'
-                                    : 'bg-white border border-gray-200 text-gray-600 hover:border-catalog-accent'
+                                ? 'bg-catalog-accent text-white'
+                                : 'bg-white border border-gray-200 text-gray-600 hover:border-catalog-accent'
                                 }`}
                         >
                             {preset.label}
@@ -142,6 +142,7 @@ export function ImageCropper({ src, onCropComplete, onCancel }: ImageCropperProp
                             alt="Crop preview"
                             onLoad={onImageLoad}
                             className="max-w-full max-h-[60vh] object-contain"
+                            crossOrigin="anonymous"
                         />
                     </ReactCrop>
                 </div>

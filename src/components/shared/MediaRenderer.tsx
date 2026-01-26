@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Maximize2, MapPin } from 'lucide-react';
 import { getTransformedUrl, getFilterStyle } from '../../lib/assetUtils';
 import { MapAsset } from '../ui/MapAsset';
+import { useGooglePhotosUrl } from '../../hooks/useGooglePhotosUrl';
 import { cn } from '../../lib/utils';
 
 interface MediaRendererProps {
@@ -37,11 +38,14 @@ export const MediaRenderer = memo(function MediaRenderer({
     className
 }: MediaRendererProps) {
 
+    const { url: resolvedUrl } = useGooglePhotosUrl(config.googlePhotoId, url);
+    const displayUrl = resolvedUrl || url || '';
+
     // 1. Handle Images
     if (type === 'image') {
         return (
             <img
-                src={getTransformedUrl(url || '', config)}
+                src={getTransformedUrl(displayUrl, config)}
                 alt=""
                 className={cn("absolute w-full h-full shadow-none transition-all duration-300", className)}
                 crossOrigin="anonymous"
@@ -89,7 +93,7 @@ export const MediaRenderer = memo(function MediaRenderer({
                 onTouchStart={stopPropagation}
             >
                 <video
-                    src={url}
+                    src={displayUrl}
                     className="w-full h-full"
                     style={videoStyle}
                     playsInline
@@ -123,7 +127,7 @@ export const MediaRenderer = memo(function MediaRenderer({
                             e.preventDefault();
                             e.stopPropagation();
                             e.nativeEvent.stopImmediatePropagation();
-                            if (url) onVideoClick(url, rotation);
+                            if (displayUrl) onVideoClick(displayUrl, rotation);
                         }}
                         onMouseDown={(e) => {
                             e.stopPropagation();

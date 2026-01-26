@@ -1,14 +1,121 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Maximize2, Play, Pause } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, Play, Pause, Camera } from 'lucide-react';
+import { useGooglePhotosUrl } from '../../hooks/useGooglePhotosUrl';
 import { cn } from '../../lib/utils';
 import { useGlobalLightbox } from '../ui/GlobalLightbox';
 
 export type GalleryMode = 'cards' | 'carousel' | 'clickable' | 'masonry' | 'grid' | 'polaroid';
 
 interface EventMediaGalleryProps {
-    assets: Array<{ url: string; type: 'image' | 'video'; caption?: string }>;
+    assets: Array<{ url: string; type: 'image' | 'video'; caption?: string; googlePhotoId?: string }>;
     mode: GalleryMode;
+}
+
+function GalleryItem({ asset, index, openLightbox, lightboxImages, currentMode }: any) {
+    const { url: resolvedUrl } = useGooglePhotosUrl(asset.googlePhotoId, asset.url);
+    const displayUrl = resolvedUrl || asset.url;
+    const isGoogle = !!asset.googlePhotoId;
+
+    if (currentMode === 'cards') {
+        const rotation = (index % 3 === 0) ? -2 : (index % 3 === 1) ? 2 : 1;
+        return (
+            <motion.div
+                initial={{ opacity: 0, y: 50, rotate: rotation * 2 }}
+                whileInView={{ opacity: 1, y: 0, rotate: rotation }}
+                viewport={{ once: true, margin: "-50px" }}
+                whileHover={{ y: -10, rotate: 0, scale: 1.02 }}
+                className="group relative cursor-pointer"
+                onClick={() => openLightbox(index, lightboxImages)}
+            >
+                <div className="bg-white p-4 pb-12 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-catalog-accent/5 rounded-sm relative z-10 transition-shadow group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)]">
+                    <div className="aspect-[4/5] overflow-hidden bg-catalog-stone/5 relative">
+                        <motion.img
+                            src={displayUrl}
+                            alt={asset.caption || `Gallery image ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            whileHover={{ scale: 1.1 }}
+                            transition={{ duration: 0.6 }}
+                            referrerPolicy="no-referrer"
+                        />
+                        {isGoogle && <div className="absolute top-2 right-2 z-10 p-1 bg-black/40 rounded-full backdrop-blur-sm"><Camera className="w-3 h-3 text-white" /></div>}
+                    </div>
+                    <div className="absolute bottom-4 left-0 right-0 px-6">
+                        <p className="font-serif italic text-catalog-text/60 text-center text-sm truncate">
+                            {asset.caption || `Moment #${index + 1}`}
+                        </p>
+                    </div>
+                </div>
+            </motion.div>
+        );
+    }
+
+    if (currentMode === 'grid') {
+        return (
+            <div
+                className="aspect-square overflow-hidden cursor-pointer relative group"
+                onClick={() => openLightbox(index, lightboxImages)}
+            >
+                <img src={displayUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" referrerPolicy="no-referrer" />
+                {isGoogle && <div className="absolute top-2 right-2 z-10 p-1 bg-black/40 rounded-full backdrop-blur-sm"><Camera className="w-3 h-3 text-white" /></div>}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <Maximize2 className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity transform scale-50 group-hover:scale-100" />
+                </div>
+            </div>
+        );
+    }
+
+    if (currentMode === 'masonry') {
+        return (
+            <div
+                className="break-inside-avoid relative group cursor-pointer rounded-lg overflow-hidden shadow-md"
+                onClick={() => openLightbox(index, lightboxImages)}
+            >
+                <img src={displayUrl} className="w-full h-auto object-cover" alt="" referrerPolicy="no-referrer" />
+                {isGoogle && <div className="absolute top-2 right-2 z-10 p-1 bg-black/40 rounded-full backdrop-blur-sm"><Camera className="w-3 h-3 text-white" /></div>}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                    <p className="text-white text-xs font-medium truncate w-full">{asset.caption || 'View Image'}</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (currentMode === 'polaroid') {
+        const rotation = (Math.random() - 0.5) * 12;
+        return (
+            <motion.div
+                initial={{ opacity: 0, rotate: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, rotate: rotation, scale: 1 }}
+                viewport={{ once: true }}
+                whileHover={{ scale: 1.1, rotate: 0, zIndex: 10 }}
+                className="bg-white p-3 pt-3 pb-8 shadow-xl w-64 flex-none transform transition-all duration-300 cursor-pointer"
+                style={{ transform: `rotate(${rotation}deg)` }}
+                onClick={() => openLightbox(index, lightboxImages)}
+            >
+                <div className="aspect-square bg-gray-100 overflow-hidden mb-3 relative">
+                    <img src={displayUrl} className="w-full h-full object-cover filter sepia-[.2] contrast-[1.1]" alt="" referrerPolicy="no-referrer" />
+                    {isGoogle && <div className="absolute top-2 right-2 z-10 p-1 bg-white/40 rounded-full backdrop-blur-sm"><Camera className="w-3 h-3 text-gray-800" /></div>}
+                </div>
+                <p className="font-handwriting text-catalog-text/80 text-center text-lg leading-none transform -rotate-1">
+                    {asset.caption || 'Memories'}
+                </p>
+            </motion.div>
+        );
+    }
+
+    return (
+        <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="aspect-square relative cursor-pointer group rounded-xl overflow-hidden shadow-lg"
+            onClick={() => openLightbox(index, lightboxImages)}
+        >
+            <img src={displayUrl} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+            {isGoogle && <div className="absolute top-2 right-2 z-10 p-1 bg-black/40 rounded-full backdrop-blur-sm"><Camera className="w-3 h-3 text-white" /></div>}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Maximize2 className="w-6 h-6 text-white" />
+            </div>
+        </motion.div>
+    );
 }
 
 export function EventMediaGallery({ assets, mode }: EventMediaGalleryProps) {
@@ -60,37 +167,16 @@ export function EventMediaGallery({ assets, mode }: EventMediaGalleryProps) {
 
     const renderCards = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mt-16 px-4">
-            {assets.map((asset, index) => {
-                const rotation = (index % 3 === 0) ? -2 : (index % 3 === 1) ? 2 : 1;
-                return (
-                    <motion.div
-                        key={index}
-                        initial={{ opacity: 0, y: 50, rotate: rotation * 2 }}
-                        whileInView={{ opacity: 1, y: 0, rotate: rotation }}
-                        viewport={{ once: true, margin: "-50px" }}
-                        whileHover={{ y: -10, rotate: 0, scale: 1.02 }}
-                        className="group relative cursor-pointer"
-                        onClick={() => openLightbox(index, lightboxImages)}
-                    >
-                        <div className="bg-white p-4 pb-12 shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-catalog-accent/5 rounded-sm relative z-10 transition-shadow group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)]">
-                            <div className="aspect-[4/5] overflow-hidden bg-catalog-stone/5 relative">
-                                <motion.img
-                                    src={asset.url}
-                                    alt={asset.caption || `Gallery image ${index + 1}`}
-                                    className="w-full h-full object-cover"
-                                    whileHover={{ scale: 1.1 }}
-                                    transition={{ duration: 0.6 }}
-                                />
-                            </div>
-                            <div className="absolute bottom-4 left-0 right-0 px-6">
-                                <p className="font-serif italic text-catalog-text/60 text-center text-sm truncate">
-                                    {asset.caption || `Moment #${index + 1}`}
-                                </p>
-                            </div>
-                        </div>
-                    </motion.div>
-                );
-            })}
+            {assets.map((asset, index) => (
+                <GalleryItem
+                    key={index}
+                    asset={asset}
+                    index={index}
+                    openLightbox={openLightbox}
+                    lightboxImages={lightboxImages}
+                    currentMode="cards"
+                />
+            ))}
         </div>
     );
 
@@ -147,16 +233,14 @@ export function EventMediaGallery({ assets, mode }: EventMediaGalleryProps) {
     const renderGrid = () => (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1 mt-12 bg-white p-1 shadow-sm border border-catalog-stone/10">
             {assets.map((asset, index) => (
-                <div
+                <GalleryItem
                     key={index}
-                    className="aspect-square overflow-hidden cursor-pointer relative group"
-                    onClick={() => openLightbox(index, lightboxImages)}
-                >
-                    <img src={asset.url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                        <Maximize2 className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity transform scale-50 group-hover:scale-100" />
-                    </div>
-                </div>
+                    asset={asset}
+                    index={index}
+                    openLightbox={openLightbox}
+                    lightboxImages={lightboxImages}
+                    currentMode="grid"
+                />
             ))}
         </div>
     );
@@ -164,61 +248,44 @@ export function EventMediaGallery({ assets, mode }: EventMediaGalleryProps) {
     const renderMasonry = () => (
         <div className="columns-1 md:columns-2 lg:columns-3 gap-4 mt-12 space-y-4 px-4">
             {assets.map((asset, index) => (
-                <div
+                <GalleryItem
                     key={index}
-                    className="break-inside-avoid relative group cursor-pointer rounded-lg overflow-hidden shadow-md"
-                    onClick={() => openLightbox(index, lightboxImages)}
-                >
-                    <img src={asset.url} className="w-full h-auto object-cover" alt="" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                        <p className="text-white text-xs font-medium truncate w-full">{asset.caption || 'View Image'}</p>
-                    </div>
-                </div>
+                    asset={asset}
+                    index={index}
+                    openLightbox={openLightbox}
+                    lightboxImages={lightboxImages}
+                    currentMode="masonry"
+                />
             ))}
         </div>
     );
 
     const renderPolaroid = () => (
         <div className="flex flex-wrap justify-center gap-8 mt-16 px-8 overflow-hidden py-12">
-            {assets.map((asset, index) => {
-                const rotation = (Math.random() - 0.5) * 12;
-                return (
-                    <motion.div
-                        key={index}
-                        initial={{ opacity: 0, rotate: 0, scale: 0.8 }}
-                        whileInView={{ opacity: 1, rotate: rotation, scale: 1 }}
-                        viewport={{ once: true }}
-                        whileHover={{ scale: 1.1, rotate: 0, zIndex: 10 }}
-                        className="bg-white p-3 pt-3 pb-8 shadow-xl w-64 flex-none transform transition-all duration-300 cursor-pointer"
-                        style={{ transform: `rotate(${rotation}deg)` }}
-                        onClick={() => openLightbox(index, lightboxImages)}
-                    >
-                        <div className="aspect-square bg-gray-100 overflow-hidden mb-3">
-                            <img src={asset.url} className="w-full h-full object-cover filter sepia-[.2] contrast-[1.1]" alt="" />
-                        </div>
-                        <p className="font-handwriting text-catalog-text/80 text-center text-lg leading-none transform -rotate-1">
-                            {asset.caption || 'Memories'}
-                        </p>
-                    </motion.div>
-                );
-            })}
+            {assets.map((asset, index) => (
+                <GalleryItem
+                    key={index}
+                    asset={asset}
+                    index={index}
+                    openLightbox={openLightbox}
+                    lightboxImages={lightboxImages}
+                    currentMode="polaroid"
+                />
+            ))}
         </div>
     );
 
     const renderClickable = () => (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-16 px-4">
             {assets.map((asset, index) => (
-                <motion.div
+                <GalleryItem
                     key={index}
-                    whileHover={{ scale: 1.05 }}
-                    className="aspect-square relative cursor-pointer group rounded-xl overflow-hidden shadow-lg"
-                    onClick={() => openLightbox(index, lightboxImages)}
-                >
-                    <img src={asset.url} className="w-full h-full object-cover" alt="" />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Maximize2 className="w-6 h-6 text-white" />
-                    </div>
-                </motion.div>
+                    asset={asset}
+                    index={index}
+                    openLightbox={openLightbox}
+                    lightboxImages={lightboxImages}
+                    currentMode="clickable"
+                />
             ))}
         </div>
     );

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAlbum } from '../../contexts/AlbumContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { GooglePhotosService } from '../../services/googlePhotos';
 import { cn } from '../../lib/utils';
 import {
     Upload,
@@ -16,8 +18,14 @@ import {
     ChevronLeft,
     Maximize2,
     Grid as GridIcon,
-    LayoutGrid
+    LayoutGrid,
+    Camera,
+    Link as LinkIcon,
+    X,
+    FolderOpen
 } from 'lucide-react';
+import { UrlInputModal } from '../media/UrlInputModal';
+import { MediaPickerModal } from '../media/MediaPickerModal';
 
 // Helper for library thumbnails (not full assets)
 const getThumbnailUrl = (url: string, type: 'image' | 'video' = 'image') => {
@@ -80,10 +88,12 @@ async function fetchLibraryAssets(category: string, familyId?: string) {
     return assets;
 }
 
-type Tab = 'uploads' | 'backgrounds' | 'stickers' | 'frames' | 'ribbons' | 'layouts';
+type Tab = 'uploads' | 'backgrounds' | 'stickers' | 'frames' | 'ribbons' | 'layouts' | 'google_photos';
 
 export function AssetLibrary() {
     const { album, uploadMedia, moveFromLibrary, isSaving, addAsset, currentPageIndex, uploadProgress } = useAlbum();
+    const { googleAccessToken, signInWithGoogle, userRole } = useAuth();
+    const isAdmin = userRole === 'admin';
     const [activeTab, setActiveTab] = useState<Tab>('uploads');
     const [libraryAssets, setLibraryAssets] = useState<any[]>([]);
     const [isLoadingAssets, setIsLoadingAssets] = useState(false);
@@ -98,7 +108,58 @@ export function AssetLibrary() {
     const [gridCols, setGridCols] = useState<2 | 3 | 4>(3);
     const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'year'>('all');
 
+    // Source Selection State
+    const [showSourceModal, setShowSourceModal] = useState(false);
+    const [showUrlInput, setShowUrlInput] = useState(false);
+    const [showMediaPicker, setShowMediaPicker] = useState(false);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleSourceSelect = (source: 'upload' | 'google' | 'url' | 'library') => {
+        setShowSourceModal(false);
+        if (source === 'upload') {
+            fileInputRef.current?.click();
+        } else if (source === 'google') {
+            setActiveTab('google_photos');
+        } else if (source === 'url') {
+            setShowUrlInput(true);
+        } else if (source === 'library') {
+            setShowMediaPicker(true);
+        }
+    };
+
+    const handleUrlImport = async (url: string) => {
+        if (!url) return;
+        setShowUrlInput(false);
+
+        try {
+            // Show fake progress start
+            // Note: uploadMedia handles real progress updates via valid file
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const mimeType = blob.type || 'image/jpeg';
+            const ext = mimeType.split('/')[1] || 'jpg';
+            const filename = `imported-url-${Date.now()}.${ext}`;
+            const file = new File([blob], filename, { type: mimeType });
+
+            await uploadMedia([file], 'general');
+            await uploadMedia([file], 'general');
+        } catch (error: any) {
+            console.error('URL Import failed:', error);
+            alert(`Failed to import from URL: ${error.message}`);
+        }
+    };
+
+    const handleMediaPickerSelect = (item: any) => {
+        setShowMediaPicker(false);
+        if (!item) return;
+        // Map to expected format if needed, or pass directly if compatible
+        // handleAssetClick expects { id, url, type, name(or filename), is_google? }
+        handleAssetClick({
+            ...item,
+            name: item.filename // Ensure name is present
+        }, 'uploads');
+    };
 
 
     // Fetch assets when tab changes or an upload finishes
@@ -119,7 +180,7 @@ export function AssetLibrary() {
             if (category) {
                 const assets = await fetchLibraryAssets(category, curAlbum.family_id);
 
-                // Merge in-memory unplaced media to ensure instant feedback even before DB sync completes
+                // Merge in-memory unplaced media
                 let mergedAssets = [...assets];
                 if (category === 'uploads' && curAlbum.unplacedMedia && curAlbum.unplacedMedia.length > 0) {
                     const dbUrls = new Set(assets.map(a => a.url));
@@ -139,11 +200,47 @@ export function AssetLibrary() {
                 }
 
                 setLibraryAssets(mergedAssets);
+            } else if (activeTab === 'google_photos') {
+                if (googleAccessToken) {
+                    try {
+                        const photosService = new GooglePhotosService(googleAccessToken);
+                        let response;
+                        if (searchQuery.trim()) {
+                            // Simple text search isn't directly supported for all items in Photos API
+                            // but we can use list and filter locally, OR use specific search parameters
+                            // Actually, let's just list and filter locally for now to stay simple, 
+                            // OR if we want 'search', we can use searchMediaItems with filters
+                            response = await photosService.listMediaItems(100);
+                        } else {
+                            response = await photosService.listMediaItems(100);
+                        }
+
+                        let items = response.mediaItems || [];
+                        if (searchQuery.trim()) {
+                            const q = searchQuery.toLowerCase();
+                            items = items.filter(i => i.filename.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q));
+                        }
+
+                        const assets = items.map(item => ({
+                            id: item.id,
+                            url: item.baseUrl || '',
+                            type: item.mimeType.startsWith('video') ? 'video' : 'image',
+                            category: 'google_photos',
+                            name: item.filename,
+                            is_google: true,
+                            width: parseInt(item.mediaMetadata.width),
+                            height: parseInt(item.mediaMetadata.height)
+                        }));
+                        setLibraryAssets(assets);
+                    } catch (err) {
+                        console.error('Error fetching Google Photos:', err);
+                    }
+                }
             }
             setIsLoadingAssets(false);
         };
         loadAssets();
-    }, [activeTab, album?.family_id, isSaving, album?.unplacedMedia?.length]);
+    }, [activeTab, album?.family_id, isSaving, album?.unplacedMedia?.length, googleAccessToken, searchQuery]);
 
     if (!album) return null;
     const currentPage = album.pages[currentPageIndex];
@@ -156,6 +253,7 @@ export function AssetLibrary() {
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
+            const files = Array.from(e.target.files);
             const categoryMap: Record<string, string> = {
                 'uploads': 'general',
                 'backgrounds': 'background',
@@ -163,7 +261,41 @@ export function AssetLibrary() {
                 'frames': 'frame',
                 'ribbons': 'ribbon'
             };
-            await uploadMedia(Array.from(e.target.files), categoryMap[activeTab]);
+            const category = categoryMap[activeTab];
+
+            // Special handling for ADMINS uploading to System Categories
+            if (activeTab !== 'uploads' && isAdmin) {
+                const { storageService } = await import('../../services/storage');
+
+                // Show fake loading/progress via isSaving state if possible, or just alert?
+                // Since we don't control isSaving directly easily without triggering context, we might rely on a local loading state or toast.
+                // For now, let's just do it silently or log.
+
+                for (const file of files) {
+                    const { url, error } = await storageService.uploadFile(file, 'system-assets', `${category}/`);
+                    if (url) {
+                        await supabase.from('library_assets').insert({
+                            category: category,
+                            url: url,
+                            name: file.name,
+                            tags: [],
+                            is_premium: false
+                        });
+                    }
+                }
+
+                // Trigger refresh
+                // activeTab toggle to force reload? or just rely on react?
+                // setLibraryAssets won't auto update unless we re-fetch.
+                setActiveTab(prev => prev); // dummy update or we could refetch
+                // Ideally call a refetch function, but useEffect depends on activeTab.
+                // Let's toggle slightly or set activeTab to same value to trigger effect? 
+                // React might bail out. Let's toggle isLoadingAssets or something.
+                setSearchQuery(q => q + ' '); setSearchQuery(q => q.trim()); // Hacky re-trigger
+            } else {
+                // Regular User Upload (Family Media)
+                await uploadMedia(files, category);
+            }
             e.target.value = '';
         }
     };
@@ -234,14 +366,33 @@ export function AssetLibrary() {
                 originalDimensions: { width: natW, height: natH },
                 rotation: 0,
                 zIndex: isFrame ? 50 : (isBackground ? 0 : currentPage.assets.length + 1),
-                isStamp: type !== 'uploads',
+                isStamp: type !== 'uploads' && type !== 'google_photos',
                 category: type,
                 fitMode: isBackground ? 'cover' : 'fit',
                 aspectRatio: ratio,
                 isLocked: false,
                 lockAspectRatio: true,
-                pivot: { x: 0.5, y: 0.5 }
+                pivot: { x: 0.5, y: 0.5 },
+                ...(item.is_google ? { googlePhotoId: item.id } : {})
             } as any);
+
+            // Log to family_media for persistent folder tracking if it's a Google Photo
+            if (item.is_google && album.family_id) {
+                const saveToSupabase = async () => {
+                    const { data: userData } = await supabase.auth.getUser();
+                    await supabase.from('family_media').upsert({
+                        family_id: album.family_id,
+                        url: item.url,
+                        type: item.type,
+                        filename: item.name,
+                        folder: album.title, // Folder for the album
+                        category: 'google_photos',
+                        uploaded_by: userData?.user?.id,
+                        metadata: { googlePhotoId: item.id }
+                    } as any, { onConflict: 'url' });
+                };
+                saveToSupabase();
+            }
         };
 
         // Check if item is in unplacedMedia to move it instead of copy
@@ -309,6 +460,12 @@ export function AssetLibrary() {
                 >
                     <Bookmark className="w-3.5 h-3.5" /> Ribbons
                 </button>
+                <button
+                    onClick={() => setActiveTab('google_photos')}
+                    className={cn("flex-1 min-w-[33%] py-2 px-1 flex flex-col items-center gap-0.5 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-colors", activeTab === 'google_photos' ? "border-catalog-accent text-catalog-accent bg-white" : "border-transparent text-blue-500 hover:bg-white/50")}
+                >
+                    <Camera className="w-4 h-4" /> Photos
+                </button>
             </div>
 
             {/* Content Area */}
@@ -327,7 +484,7 @@ export function AssetLibrary() {
                 )}
 
                 {/* Global Controls: Search & Sort */}
-                <div className="mb-4 space-y-2">
+                <div className="mb-2 space-y-2">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-catalog-text/30" />
                         <input
@@ -339,6 +496,63 @@ export function AssetLibrary() {
                         />
                     </div>
                 </div>
+
+                {/* Global Filters & Sort */}
+                <div className="mb-3 space-y-2 bg-white p-2 rounded-lg border border-catalog-accent/5">
+                    {/* Media Type Filter */}
+                    <div className="flex bg-gray-100/50 p-0.5 rounded-md border border-catalog-accent/5">
+                        <button
+                            onClick={() => setMediaFilter('all')}
+                            className={cn("flex-1 py-1 text-[8px] font-bold uppercase rounded transition-all", mediaFilter === 'all' ? "bg-white shadow-sm text-catalog-accent" : "text-gray-400 hover:text-gray-600")}
+                        >All</button>
+                        <button
+                            onClick={() => setMediaFilter('image')}
+                            className={cn("flex-1 py-1 text-[8px] font-bold uppercase rounded transition-all", mediaFilter === 'image' ? "bg-white shadow-sm text-catalog-accent" : "text-gray-400 hover:text-gray-600")}
+                        >Img</button>
+                        <button
+                            onClick={() => setMediaFilter('video')}
+                            className={cn("flex-1 py-1 text-[8px] font-bold uppercase rounded transition-all", mediaFilter === 'video' ? "bg-white shadow-sm text-catalog-accent" : "text-gray-400 hover:text-gray-600")}
+                        >Vid</button>
+                    </div>
+
+                    {/* Date & Sort */}
+                    <div className="flex gap-1">
+                        <select
+                            value={dateFilter}
+                            onChange={(e) => setDateFilter(e.target.value as any)}
+                            className="flex-1 bg-white border border-catalog-accent/10 rounded px-1.5 py-1 text-[8px] font-bold text-catalog-text/70 focus:outline-none"
+                        >
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="year">This Year</option>
+                        </select>
+                        <select
+                            value={sortBy === 'uploaded' ? (sortOrder === 'desc' ? 'newest' : 'oldest') : 'name'}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'name') {
+                                    setSortBy('name');
+                                    setSortOrder('asc');
+                                } else if (val === 'newest') {
+                                    setSortBy('uploaded');
+                                    setSortOrder('desc');
+                                } else if (val === 'oldest') {
+                                    setSortBy('uploaded');
+                                    setSortOrder('asc');
+                                }
+                            }}
+                            className="flex-1 bg-white border border-catalog-accent/10 rounded px-1.5 py-1 text-[8px] font-bold text-catalog-text/70 focus:outline-none"
+                        >
+                            <option value="newest">Newest</option>
+                            <option value="oldest">Oldest</option>
+                            <option value="name">Name</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Grid controls... */}
 
                 {/* Grid Size Controls */}
                 <div className="flex items-center justify-end gap-1 mb-3 px-1">
@@ -371,11 +585,11 @@ export function AssetLibrary() {
                         {/* Upload & Basic Filters */}
                         <div className="flex items-center gap-2 px-1">
                             <div
-                                onClick={() => fileInputRef.current?.click()}
+                                onClick={() => setShowSourceModal(true)}
                                 className="flex-1 border border-dashed border-catalog-accent/30 rounded-lg p-3 text-center cursor-pointer hover:bg-catalog-accent/5 transition-all group bg-white shadow-sm"
                             >
                                 <Upload className="w-4 h-4 text-catalog-accent/60 mx-auto mb-1 group-hover:text-catalog-accent" />
-                                <p className="text-[9px] text-catalog-accent font-bold uppercase tracking-tight">Upload new</p>
+                                <p className="text-[9px] text-catalog-accent font-bold uppercase tracking-tight">Add Media</p>
                                 <input
                                     ref={fileInputRef}
                                     type="file"
@@ -387,54 +601,6 @@ export function AssetLibrary() {
                             </div>
 
                             <div className="flex-1 space-y-1.5">
-                                <div className="flex bg-gray-100/50 p-0.5 rounded-md border border-catalog-accent/5">
-                                    <button
-                                        onClick={() => setMediaFilter('all')}
-                                        className={cn("flex-1 py-1 text-[8px] font-bold uppercase rounded transition-all", mediaFilter === 'all' ? "bg-white shadow-sm text-catalog-accent" : "text-gray-400 hover:text-gray-600")}
-                                    >All</button>
-                                    <button
-                                        onClick={() => setMediaFilter('image')}
-                                        className={cn("flex-1 py-1 text-[8px] font-bold uppercase rounded transition-all", mediaFilter === 'image' ? "bg-white shadow-sm text-catalog-accent" : "text-gray-400 hover:text-gray-600")}
-                                    >Img</button>
-                                    <button
-                                        onClick={() => setMediaFilter('video')}
-                                        className={cn("flex-1 py-1 text-[8px] font-bold uppercase rounded transition-all", mediaFilter === 'video' ? "bg-white shadow-sm text-catalog-accent" : "text-gray-400 hover:text-gray-600")}
-                                    >Vid</button>
-                                </div>
-                                <div className="flex gap-1">
-                                    <select
-                                        value={dateFilter}
-                                        onChange={(e) => setDateFilter(e.target.value as any)}
-                                        className="flex-1 bg-white border border-catalog-accent/10 rounded px-1.5 py-1 text-[8px] font-bold text-catalog-text/70 focus:outline-none"
-                                    >
-                                        <option value="all">All Time</option>
-                                        <option value="today">Today</option>
-                                        <option value="week">This Week</option>
-                                        <option value="month">This Month</option>
-                                        <option value="year">This Year</option>
-                                    </select>
-                                    <select
-                                        value={sortBy === 'uploaded' ? (sortOrder === 'desc' ? 'newest' : 'oldest') : 'name'}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val === 'name') {
-                                                setSortBy('name');
-                                                setSortOrder('asc');
-                                            } else if (val === 'newest') {
-                                                setSortBy('uploaded');
-                                                setSortOrder('desc');
-                                            } else if (val === 'oldest') {
-                                                setSortBy('uploaded');
-                                                setSortOrder('asc');
-                                            }
-                                        }}
-                                        className="flex-1 bg-white border border-catalog-accent/10 rounded px-1.5 py-1 text-[8px] font-bold text-catalog-text/70 focus:outline-none"
-                                    >
-                                        <option value="newest">Newest</option>
-                                        <option value="oldest">Oldest</option>
-                                        <option value="name">Name</option>
-                                    </select>
-                                </div>
                                 <div className="flex items-center justify-between">
                                     <button
                                         onClick={() => {
@@ -597,17 +763,91 @@ export function AssetLibrary() {
                     </div>
                 )}
 
+                {/* GOOGLE PHOTOS TAB */}
+                {activeTab === 'google_photos' && (
+                    <div className="space-y-4">
+                        {!googleAccessToken ? (
+                            <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4">
+                                <div className="p-4 bg-blue-50 rounded-full">
+                                    <Camera className="w-10 h-10 text-blue-500" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="text-sm font-bold text-gray-900 uppercase">Google Photos Access</h3>
+                                    <p className="text-xs text-gray-500">Sign in with Google to browse and use your photos directly in the album.</p>
+                                </div>
+                                <button
+                                    onClick={() => signInWithGoogle()}
+                                    className="px-6 py-2 bg-blue-600 text-white text-xs font-bold uppercase rounded-full hover:bg-blue-700 transition-colors shadow-md shadow-blue-200"
+                                >
+                                    Enable Sync
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 animate-in fade-in duration-300">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search your Google Photos..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                // Trigger re-fetch via effect hook
+                                                setActiveTab('google_photos'); // Just to trigger if needed, or I can refine the effect
+                                            }
+                                        }}
+                                        className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                    />
+                                </div>
+
+                                {isLoadingAssets ? (
+                                    <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-20">
+                                        <Loader2 className="w-8 h-8 animate-spin" />
+                                        <span className="text-[9px] font-bold uppercase tracking-widest">Fetching Library...</span>
+                                    </div>
+                                ) : (
+                                    <div className={cn("grid gap-2", gridCols === 2 ? "grid-cols-2" : (gridCols === 3 ? "grid-cols-3" : "grid-cols-4"))}>
+                                        {libraryAssets.map((item) => (
+                                            <div
+                                                key={item.id}
+                                                onClick={() => handleAssetClick(item, 'google_photos')}
+                                                className="group flex flex-col gap-1 cursor-pointer"
+                                            >
+                                                <div className={cn(
+                                                    "relative aspect-square rounded-lg overflow-hidden bg-white shadow-sm group-hover:shadow-md transition-all border",
+                                                    usedAssetUrls.has(item.url) ? "border-blue-500 ring-1 ring-blue-500/50" : "border-gray-100 group-hover:border-blue-300"
+                                                )}>
+                                                    <img src={item.url + '=w400-h400-c'} alt="" className="w-full h-full object-cover" />
+                                                    <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                        <Plus className="w-5 h-5 text-blue-600" />
+                                                    </div>
+                                                    <div className="absolute top-1 left-1">
+                                                        <Camera className="w-3 h-3 text-white drop-shadow-md opacity-70" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* BACKGROUNDS TAB */}
                 {activeTab === 'backgrounds' && (
                     <div className="grid grid-cols-2 gap-2">
-                        <div
-                            onClick={() => fileInputRef.current?.click()}
-                            className="col-span-2 border border-dashed border-catalog-accent/30 rounded-lg p-4 text-center cursor-pointer hover:bg-catalog-accent/5 transition-all mb-2 bg-white"
-                        >
-                            <Upload className="w-5 h-5 text-catalog-accent/60 mx-auto mb-1" />
-                            <p className="text-[10px] text-catalog-accent font-bold uppercase tracking-tight">Upload Background</p>
-                            <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} />
-                        </div>
+                        {isAdmin && (
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className="col-span-2 border border-dashed border-catalog-accent/30 rounded-lg p-4 text-center cursor-pointer hover:bg-catalog-accent/5 transition-all mb-2 bg-white"
+                            >
+                                <Upload className="w-5 h-5 text-catalog-accent/60 mx-auto mb-1" />
+                                <p className="text-[9px] text-catalog-accent font-bold uppercase tracking-tight">Add System Background</p>
+                                <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} />
+                            </div>
+                        )}
                         <div className="col-span-2 flex items-center gap-2 mb-2">
                             <select
                                 value={sortBy}
@@ -748,6 +988,86 @@ export function AssetLibrary() {
                     </div>
                 )}
             </div>
+
+            {showUrlInput && (
+                <UrlInputModal
+                    isOpen={showUrlInput}
+                    onClose={() => setShowUrlInput(false)}
+                    onSubmit={handleUrlImport}
+                />
+            )}
+
+            {/* Source Selection Modal */}
+            {showSourceModal && (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowSourceModal(false)}>
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-xs overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="text-lg font-serif italic text-catalog-text">Add Media</h3>
+                            <button onClick={() => setShowSourceModal(false)} className="p-1 hover:bg-gray-100 rounded-full text-gray-400">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-2">
+                            <button
+                                onClick={() => handleSourceSelect('upload')}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Upload className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="font-bold text-gray-900 text-sm">Upload Files</div>
+                                    <div className="text-xs text-gray-500">From computer</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => handleSourceSelect('library')}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <FolderOpen className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="font-bold text-gray-900 text-sm">Media Library</div>
+                                    <div className="text-xs text-gray-500">All uploads</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => handleSourceSelect('google')}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Camera className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="font-bold text-gray-900 text-sm">Google Photos</div>
+                                    <div className="text-xs text-gray-500">From library</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => handleSourceSelect('url')}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <LinkIcon className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="font-bold text-gray-900 text-sm">Image Link</div>
+                                    <div className="text-xs text-gray-500">Direct URL</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showMediaPicker && (
+                <MediaPickerModal
+                    isOpen={showMediaPicker}
+                    onClose={() => setShowMediaPicker(false)}
+                    onSelect={handleMediaPickerSelect}
+                    allowedTypes={['image', 'video']}
+                />
+            )}
         </div>
     );
 }

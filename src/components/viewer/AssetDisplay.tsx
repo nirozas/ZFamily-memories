@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Maximize2, MapPin } from 'lucide-react';
 import { type Asset } from '../../contexts/AlbumContext';
 import { getTransformedUrl, getFilterStyle, getClipPathStyle } from '../../lib/assetUtils';
+import { useGooglePhotosUrl } from '../../hooks/useGooglePhotosUrl';
 import { MapAsset } from '../ui/MapAsset';
 
 interface AssetDisplayProps {
@@ -25,6 +26,8 @@ export const AssetDisplay = memo(function AssetDisplay({
     onVideoClick,
     isInSlot = false
 }: AssetDisplayProps) {
+    const { url: resolvedUrl } = useGooglePhotosUrl(asset.googlePhotoId, asset.url);
+    const displayUrl = resolvedUrl || asset.url;
 
     // Calculate positioning
     // If isInSlot is true, we assume the parent is already positioned and we take up 100%
@@ -65,7 +68,7 @@ export const AssetDisplay = memo(function AssetDisplay({
             return (
                 <div style={{ ...style, overflow: 'hidden' }} className="bg-gray-100/50">
                     <img
-                        src={getTransformedUrl(asset.url, asset)}
+                        src={getTransformedUrl(displayUrl, asset)}
                         alt=""
                         className="absolute w-full h-full shadow-none transition-opacity duration-300"
                         style={{
@@ -86,7 +89,7 @@ export const AssetDisplay = memo(function AssetDisplay({
         return (
             <div style={{ ...style, overflow: 'hidden' }}>
                 <img
-                    src={getTransformedUrl(asset.url, asset)}
+                    src={getTransformedUrl(displayUrl, asset)}
                     alt=""
                     className="absolute max-w-none shadow-none"
                     style={{
@@ -109,7 +112,7 @@ export const AssetDisplay = memo(function AssetDisplay({
         return (
             <div style={{ ...style, overflow: 'hidden' }} className="group/video layout-frame">
                 <video
-                    src={asset.url}
+                    src={displayUrl}
                     style={{
                         width: '100%',
                         height: '100%',
@@ -151,7 +154,7 @@ export const AssetDisplay = memo(function AssetDisplay({
                     onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        if (onVideoClick) onVideoClick(asset.url);
+                        if (onVideoClick) onVideoClick(displayUrl);
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onMouseUp={(e) => e.stopPropagation()}

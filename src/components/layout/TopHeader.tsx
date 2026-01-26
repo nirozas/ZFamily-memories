@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Flame, BookOpen, Settings, User, Calendar as CalendarIcon, ChevronDown, LogOut, MapPin, Image as ImageIcon, Clock } from 'lucide-react';
+import { Flame, BookOpen, Settings, User, Calendar as CalendarIcon, ChevronDown, LogOut, MapPin, Image as ImageIcon, Clock, Camera } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAlbum } from '../../contexts/AlbumContext';
 import { CloudUpload, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export function TopHeader() {
-    const { user, signOut } = useAuth();
+    const { user, signOut, googleAccessToken, signInWithGoogle } = useAuth();
     const { saveStatus } = useAlbum();
     const [isOpen, setIsOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -129,6 +129,25 @@ export function TopHeader() {
                             <CloudUpload className="w-4 h-4" />
                             <span className="text-[10px] font-black uppercase tracking-widest italic opacity-50 font-mono">Standby</span>
                         </div>
+                    )}
+                </div>
+
+                {/* Google Photos Connection */}
+                <div className="hidden md:flex items-center">
+                    {googleAccessToken ? (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 border border-green-200">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            <Camera className="w-4 h-4 text-green-600" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-green-700">Photos Connected</span>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => signInWithGoogle()}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
+                        >
+                            <Camera className="w-4 h-4 text-blue-600" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-700">Connect Photos</span>
+                        </button>
                     )}
                 </div>
 

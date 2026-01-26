@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout';
 import { Login } from './pages/Login';
 import { SignUp } from './pages/SignUp';
+import { AuthCallback } from './pages/AuthCallback';
 import { Home } from './pages/Home';
 import { AlbumEditor } from './pages/AlbumEditor';
 import { AlbumView } from './pages/AlbumView';
@@ -19,6 +20,7 @@ import { SharedEventView } from './pages/SharedEventView';
 import { HeritageMap } from './pages/HeritageMap';
 import { MediaLibrary } from './pages/MediaLibrary';
 import { Calendar } from './pages/Calendar';
+import { EventsDiagnostic } from './pages/EventsDiagnostic';
 
 function App() {
   return (
@@ -29,6 +31,7 @@ function App() {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* Album Editor - Full screen, no sidebar */}
             <Route
@@ -95,6 +98,7 @@ function App() {
                       <Route path="/events" element={<Events />} />
                       <Route path="/calendar" element={<Calendar />} />
                       <Route path="/map" element={<HeritageMap />} />
+                      <Route path="/debug/events" element={<EventsDiagnostic />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/settings" element={<Settings />} />
                     </Routes>

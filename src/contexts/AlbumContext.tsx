@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
+import { GooglePhotosService } from '../services/googlePhotos';
 
 export interface Asset {
     id: string;
@@ -105,6 +107,7 @@ export interface Asset {
         zoom: number;
         places: { name: string; lat: number; lng: number }[];
     };
+    googlePhotoId?: string;
     createdAt?: Date;
 }
 
@@ -315,6 +318,7 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
     const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
     const [showLayoutOutlines, setShowLayoutOutlines] = useState(true);
     const [activeSlot, setActiveSlot] = useState<{ pageId: string; index: number } | null>(null);
+    const { googleAccessToken } = useAuth();
     const albumRef = useRef<Album | null>(null);
 
     const setAlbum = useCallback((
@@ -432,17 +436,63 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
         setSelectedAssetId(newAsset.id);
     }, [album]);
 
-    const updateAsset = useCallback((pageId: string, assetId: string, updates: Partial<Asset>, options?: { skipHistory?: boolean }) => {
+    const updateAsset = useCallback((pageId: string, assetId: string, updates: any, options?: { skipHistory?: boolean }) => {
         if (!album || album.config.isLocked) return;
         setAlbum(prev => {
             if (!prev) return null;
             return {
                 ...prev,
-                pages: prev.pages.map(p =>
-                    p.id === pageId
-                        ? { ...p, assets: p.assets.map(a => a.id === assetId ? { ...a, ...updates } : a) }
-                        : p
-                ),
+                pages: prev.pages.map(p => {
+                    if (p.id !== pageId) return p;
+
+                    // 1. Update Legacy Assets
+                    let newAssets = p.assets.map(a => a.id === assetId ? { ...a, ...updates } : a);
+
+                    // 2. Update Unified Layout Config (slots/freeform)
+                    let newLayoutConfig = (p.layoutConfig || []).map(box => {
+                        if (box.id === assetId) {
+                            return {
+                                ...box,
+                                left: updates.x ?? box.left,
+                                top: updates.y ?? box.top,
+                                width: updates.width ?? box.width,
+                                height: updates.height ?? box.height,
+                                zIndex: updates.zIndex ?? box.zIndex,
+                                content: {
+                                    ...box.content,
+                                    rotation: updates.rotation ?? box.content?.rotation,
+                                    zoom: updates.zoom ?? box.content?.zoom,
+                                    x: updates.focalX ?? box.content?.x,
+                                    y: updates.focalY ?? box.content?.y,
+                                    config: { ...(box.content?.config || {}), ...updates }
+                                }
+                            } as any;
+                        }
+                        return box;
+                    });
+
+                    // 3. Update Unified Text Layers
+                    let newTextLayers = (p.textLayers || []).map(layer => {
+                        if (layer.id === assetId) {
+                            return {
+                                ...layer,
+                                left: updates.x ?? layer.left,
+                                top: updates.y ?? layer.top,
+                                width: updates.width ?? layer.width,
+                                height: updates.height ?? layer.height,
+                                content: {
+                                    ...layer.content,
+                                    rotation: updates.rotation ?? layer.content?.rotation,
+                                    text: updates.content ?? layer.content?.text,
+                                    config: { ...(layer.content?.config || {}), ...updates }
+                                }
+                            } as any;
+                        }
+                        return layer;
+                    });
+
+                    return { ...p, assets: newAssets, layoutConfig: newLayoutConfig, textLayers: newTextLayers };
+                }),
                 updatedAt: new Date(),
             };
         }, options);
@@ -534,7 +584,6 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
 
     const uploadMedia = useCallback(async (files: File[], category: string = 'general') => {
         if (!album || album.config.isLocked) return;
-        const { storageService } = await import('../services/storage');
         const { supabase } = await import('../lib/supabase');
         const { mediaService } = await import('../services/mediaService');
 
@@ -564,18 +613,38 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
                     fileToUpload = file;
                 }
 
-                const { url, error } = await storageService.uploadFile(
-                    fileToUpload,
-                    'album-assets',
-                    `albums/${album.title}/`,
-                    (progress) => {
-                        const percent = Math.round((progress.loaded / progress.total) * 100);
-                        setUploadProgress(prev => ({
-                            ...prev,
-                            [file.name]: percent
-                        }));
+                let url: string | null = null;
+                let googlePhotoId: string | undefined;
+
+                if (googleAccessToken) {
+                    try {
+                        const photosService = new GooglePhotosService(googleAccessToken);
+                        const mediaItem = await photosService.uploadMedia(fileToUpload, fileToUpload.name);
+                        url = mediaItem.baseUrl;
+                        googlePhotoId = mediaItem.id;
+                        setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+                    } catch (err) {
+                        console.error('Google Photos upload failed, falling back to storage service:', err);
                     }
-                );
+                }
+
+                if (!url) {
+                    const { storageService } = await import('../services/storage');
+                    const { url: storageUrl } = await storageService.uploadFile(
+                        fileToUpload,
+                        'album-assets',
+                        `albums/${album.title}/`,
+                        (progress) => {
+                            const percent = Math.round((progress.loaded / progress.total) * 100);
+                            setUploadProgress(prev => ({
+                                ...prev,
+                                [file.name]: percent
+                            }));
+                        }
+                    );
+                    url = storageUrl;
+                }
+
                 if (url) {
                     // Load image to get dimensions
                     let dimensions = { width: 400, height: 300 };
@@ -632,7 +701,8 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
                         zIndex: 1,
                         pivot: { x: 0.5, y: 0.5 }, // Default to center
                         createdAt: new Date(),
-                        folder: album.title
+                        folder: album.title,
+                        googlePhotoId
                     });
 
                     if (album.family_id) {
@@ -651,8 +721,8 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
                         if (dbError) console.error('Error logging to family_media:', dbError);
                     }
 
-                } else if (error) {
-                    console.error('Upload error for file:', file.name, error);
+                } else if (url === null) {
+                    console.error('Upload error for file:', file.name);
                 }
             }
 
@@ -968,6 +1038,40 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
             const isSpreadView = prev.config.useSpreadView;
             const isLandscapeLayout = layout.target_ratio === 'landscape';
 
+            // --- SPECIAL: FREEFORM / BLANK CANVAS LOGIC ---
+            if (layout.name === 'freeform' || layout.id === 'freeform') {
+                const updatedAssets = page.assets.map(asset => {
+                    // If asset was in a slot, we must "freeze" its position as absolute before clearing the layout
+                    if (asset.slotId !== undefined && page.layoutConfig) {
+                        const slot = page.layoutConfig[asset.slotId];
+                        if (slot) {
+                            return {
+                                ...asset,
+                                slotId: undefined,
+                                x: slot.left,
+                                y: slot.top,
+                                width: slot.width,
+                                height: slot.height
+                            };
+                        }
+                    }
+                    return { ...asset, slotId: undefined };
+                });
+
+                return {
+                    ...prev,
+                    pages: prev.pages.map(p => p.id === pageId ? {
+                        ...p,
+                        layoutTemplate: 'freeform',
+                        layoutConfig: [],
+                        textLayers: [],
+                        assets: updatedAssets,
+                        isSpreadLayout: false
+                    } : p),
+                    updatedAt: new Date()
+                };
+            }
+
             let updatedAssets = [...page.assets];
 
             // Handle Spread logic: if landscape layout applied to spread, merge assets
@@ -1063,48 +1167,55 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
 
             let pages: Page[] = [];
 
+            // 3. Always fetch Legacy Data to check for stragglers/rescue
+            const { data: legacyPagesData } = await supabase
+                .from('pages')
+                .select(`*, assets(*)`)
+                .eq('album_id', albumId)
+                .order('page_number', { ascending: true });
+
             if (!albumPagesError && albumPagesData && albumPagesData.length > 0) {
                 const { normalizePageData } = await import('../lib/normalization');
-                pages = albumPagesData.map(normalizePageData);
-            } else {
+                console.log(`[AlbumContext] Hydrating ${albumPagesData.length} unified pages for album: ${albumId}`);
 
-                // --- FALLBACK TO LEGACY SCHEMA ---
-                const { data: pagesData, error: pagesError } = await supabase
-                    .from('pages')
-                    .select(`*, assets(*)`)
-                    .eq('album_id', albumId)
-                    .order('page_number', { ascending: true });
+                const unifiedPages: Page[] = albumPagesData.map(normalizePageData);
 
-                if (pagesError) throw pagesError;
+                // --- HYBRID RESCUE STRATEGY ---
+                // If a unified page is empty but legacy data exists, merge it.
+                pages = unifiedPages.map(uPage => {
+                    const legacyPage = legacyPagesData?.find((lp: any) => lp.page_number === uPage.pageNumber);
 
-                const sortedPages = (pagesData as any[] || []).sort((a, b) => a.page_number - b.page_number);
-                pages = sortedPages.map((p, i) => ({
-                    id: p.id,
-                    pageNumber: i + 1,
-                    layoutTemplate: p.template_id,
-                    backgroundColor: p.background_color,
-                    backgroundOpacity: p.background_opacity ?? 100,
-                    backgroundImage: p.background_image,
-                    assets: (p.assets as any[] || []).map(a => {
-                        let restoredType = a.asset_type;
-                        if (a.config?.originalType) {
-                            restoredType = a.config.originalType;
-                        } else if (a.asset_type === 'image' && a.config?.mapConfig) {
-                            restoredType = 'map';
-                        } else if (a.asset_type === 'text' && (a.config?.location || a.config?.isLocation)) {
-                            restoredType = 'location';
-                        }
+                    // Check if unified page is effectively empty (no layout items, no text)
+                    const isUnifiedEmpty = (!uPage.layoutConfig || uPage.layoutConfig.length === 0) &&
+                        (!uPage.textLayers || uPage.textLayers.length === 0) &&
+                        (!uPage.assets || (uPage.assets && uPage.assets.length === 0));
 
+                    if (isUnifiedEmpty && legacyPage && (legacyPage as any).assets && (legacyPage as any).assets.length > 0) {
+                        console.log(`[AlbumContext] HYBRID RESCUE: Merging legacy assets for page ${uPage.pageNumber}`);
+                        // Normalize the legacy page to get its assets in the standard format
+                        const normalizedLegacy = normalizePageData(legacyPage);
+
+                        // Merge assets. We prefer the legacy assets since unified was empty.
+                        // We also need to construct a basic layoutConfig from these assets if one doesn't exist
                         return {
-                            id: a.id,
-                            type: restoredType,
-                            url: a.url,
-                            zIndex: a.z_index || 0,
-                            slotId: a.slot_id || null,
-                            ...(a.config || {})
+                            ...uPage,
+                            assets: normalizedLegacy.assets,
+                            layoutConfig: (normalizedLegacy.layoutConfig && normalizedLegacy.layoutConfig.length > 0) ? normalizedLegacy.layoutConfig : (uPage.layoutConfig || []),
+
+                            // If unified template is 'freeform' but legacy has a template, maybe adopt it?
+                            // For safety, let's keep unified metadata but inject assets.
                         };
-                    })
-                }));
+                    }
+                    return uPage;
+                });
+
+            } else {
+                // --- FALLBACK TO LEGACY SCHEMA ---
+                console.log(`[AlbumContext] Unified data missing, attempting legacy recovery for album: ${albumId}`);
+                if (legacyPagesData) {
+                    const { normalizePageData } = await import('../lib/normalization');
+                    pages = (legacyPagesData || []).map(p => normalizePageData(p));
+                }
             }
 
             if (pages.length === 0) {
@@ -1201,7 +1312,8 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
             };
 
             // 2. Prepare Layout & Text (The "Boxes")
-            const finalLayoutConfig = [...(page.layoutConfig || [])];
+            const { prepareLayoutForSave } = await import('../lib/layoutUtils');
+            const finalLayoutConfig = prepareLayoutForSave(page);
             const finalTextLayers = [...(page.textLayers || [])];
 
             const pageUpdatePayload: any = {
@@ -1389,6 +1501,9 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
                         content: {
                             type: 'text',
                             url: undefined,
+                            zoom: 1,
+                            x: 50,
+                            y: 50,
                             rotation: asset.rotation || 0,
                             config: asset
                         }

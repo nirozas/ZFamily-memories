@@ -138,27 +138,39 @@ export function Catalog() {
 
     const handleDuplicateAlbum = async (id: string) => {
         try {
-            console.log('[Duplicate] Starting server-side clone for album:', id);
+            console.log('[Duplicate] Initiating server-side deep-clone for album:', id);
 
-            const { data: newAlbumId, error: rpcError } = await (supabase as any)
+            // Call the PostgreSQL RPC function (handles schema detection internally)
+            const { data, error: rpcError } = await (supabase as any)
                 .rpc('duplicate_album_v2', {
                     source_album_id: id,
-                    new_title: `Copy of ${albums.find(a => a.id === id)?.title || 'Album'}`
-                });
+                    new_title: null // Let RPC auto-generate "Copy of" title
+                })
+                .single();
 
             if (rpcError) {
-                console.error('[Duplicate] RPC Error:', rpcError);
-                throw rpcError;
+                console.error('[Duplicate] RPC Invocation Error:', rpcError);
+                throw new Error(rpcError.message || 'RPC call failed');
             }
 
-            console.log('[Duplicate] Success. New Album ID:', newAlbumId);
+            // Validate the RPC response
+            if (!data || !data.success) {
+                const errorMsg = data?.error_message || 'Unknown duplication failure';
+                console.error('[Duplicate] Server-Side Clone Failed:', errorMsg);
+                throw new Error(errorMsg);
+            }
+
+            console.log('[Duplicate] Success. New Album ID:', data.new_album_id);
+
+            // Refresh the catalog
             await fetchAlbums();
         } catch (err: any) {
             console.error('[Duplicate] Fatal Process Error:', err);
-            const msg = err?.message || 'Unknown database rejection';
-            alert(`Failed to duplicate archive: ${msg}`);
+            const msg = err?.message || 'Database rejected the clone operation';
+            alert(`Failed to duplicate archive: ${msg}\n\nCheck console for details.`);
         }
     };
+
 
 
 

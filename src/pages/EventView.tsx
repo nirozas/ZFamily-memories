@@ -136,9 +136,9 @@ export function EventView() {
                 {/* Minimal Header */}
                 <header className="h-16 border-b border-catalog-stone/20 flex items-center justify-between px-6 sticky top-0 bg-white/80 backdrop-blur-md z-10">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => window.close()} className="p-2 hover:bg-catalog-stone/50 rounded-full transition-colors text-catalog-text/60">
+                        <Link to="/events" className="p-2 hover:bg-catalog-stone/50 rounded-full transition-colors text-catalog-text/60">
                             <ArrowLeft className="w-5 h-5" />
-                        </button>
+                        </Link>
                         <span className="text-sm font-sans uppercase tracking-[0.2em] text-catalog-text/40 font-bold">The Family Archive</span>
                     </div>
                     <div className="flex items-center gap-2">

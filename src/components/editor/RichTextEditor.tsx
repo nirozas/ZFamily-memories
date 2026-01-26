@@ -150,6 +150,8 @@ export function RichTextEditor({ content, onChange, onBlur, style, className, au
                 spellCheck={true}
                 onInput={handleInput}
                 onBlur={onBlur}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
                 className={cn(
                     "w-full h-full outline-none empty:before:content-[attr(placeholder)] empty:before:text-gray-400 cursor-text",
                     "selection:bg-catalog-accent/30 selection:text-catalog-text",
@@ -158,7 +160,8 @@ export function RichTextEditor({ content, onChange, onBlur, style, className, au
                 style={{
                     ...style,
                     whiteSpace: 'pre-wrap',
-                    overflowWrap: 'break-word'
+                    overflowWrap: 'break-word',
+                    outline: 'none'
                 }}
             />
         </div>

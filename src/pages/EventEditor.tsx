@@ -1,11 +1,18 @@
+// @locked - This file is locked. Do not edit unless requested to unlock.
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Sparkles, ImagePlus, Calendar, Tag, Users, Layout, Sliders, Plus, Undo, Redo } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { GooglePhotosService } from '../services/googlePhotos';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { Camera, Image as ImageIcon, Link as LinkIcon, Upload, FolderOpen } from 'lucide-react';
 import { Input } from '../components/ui/Input';
+import { GooglePhotosSelector } from '../components/media/GooglePhotosSelector';
+import type { GoogleMediaItem } from '../services/googlePhotos';
+import { UrlInputModal } from '../components/media/UrlInputModal';
+import { MediaPickerModal } from '../components/media/MediaPickerModal';
 import { RichTextEditor } from '../components/events/RichTextEditor';
 import type { RichTextEditorRef } from '../components/events/RichTextEditor';
 import { storageService } from '../services/storage';
@@ -25,7 +32,7 @@ import { Loader2 } from 'lucide-react';
 export function EventEditor() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { familyId } = useAuth();
+    const { familyId, googleAccessToken } = useAuth();
     const editorRef = useRef<RichTextEditorRef>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(true);
@@ -47,6 +54,12 @@ export function EventEditor() {
 
     const [croppingImage, setCroppingImage] = useState<{ src: string, file: File, target: 'story' | 'gallery' } | null>(null);
     const [uploadTarget, setUploadTarget] = useState<'story' | 'gallery'>('story');
+
+    // Source Selection State
+    const [showSourceModal, setShowSourceModal] = useState<'story' | 'gallery' | null>(null);
+    const [showUrlInput, setShowUrlInput] = useState(false);
+    const [showGooglePhotos, setShowGooglePhotos] = useState(false);
+    const [showMediaPicker, setShowMediaPicker] = useState(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -134,6 +147,101 @@ export function EventEditor() {
         }
     }
 
+    // --- Media Handling Helpers ---
+    const handleSourceSelect = (source: 'upload' | 'google' | 'url' | 'library') => {
+        setShowSourceModal(null);
+        if (source === 'upload') {
+            fileInputRef.current?.click();
+        } else if (source === 'google') {
+            setShowGooglePhotos(true);
+        } else if (source === 'url') {
+            setShowUrlInput(true);
+        } else if (source === 'library') {
+            setShowMediaPicker(true);
+        }
+    };
+
+    const handleUrlSubmit = async (url: string) => {
+        setShowUrlInput(false);
+        await processRemoteAsset(url, undefined, 'url');
+    };
+
+    const handleGooglePhotosSelect = async (items: GoogleMediaItem[]) => {
+        setShowGooglePhotos(false);
+        if (items.length === 0) return;
+
+        // Process sequentially
+        for (const item of items) {
+            const url = item.mediaFile?.baseUrl || item.baseUrl || '';
+            await processRemoteAsset(url, item.id, 'google');
+        }
+    };
+
+    const handleMediaPickerSelect = async (item: any) => {
+        setShowMediaPicker(false);
+        if (!item) return;
+
+        // If video, we might want to check type. For now assuming item.url is valid.
+        // We pass 'library' as source so we don't try to re-upload it.
+        await processRemoteAsset(item.url, undefined, 'library');
+    };
+
+    const processRemoteAsset = async (url: string, googleId?: string, source: 'url' | 'google' | 'library' = 'url') => {
+        if (!url) return;
+        setUploading(true);
+        try {
+            let finalUrl = url;
+            let finalGoogleId = googleId;
+
+            // Try to persist to storage (mirrors Events.tsx logic)
+            try {
+                if (googleAccessToken && source === 'google') {
+                    const photosService = new GooglePhotosService(googleAccessToken);
+                    const blob = await photosService.downloadMediaItem(url);
+                    const file = new File([blob], `google_import_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                    const { url: storageUrl } = await storageService.uploadFile(file, 'event-assets', `events/${eventData.title}/`);
+                    if (storageUrl) finalUrl = storageUrl;
+                }
+            } catch (e) {
+                console.error("Failed to persist remote asset, using direct link", e);
+            }
+
+            // Log to family_media
+            if (familyId && finalUrl && source !== 'library') {
+                const { data: userData } = await supabase.auth.getUser();
+                await supabase.from('family_media').insert({
+                    family_id: familyId,
+                    url: finalUrl,
+                    type: 'image',
+                    category: 'event',
+                    folder: eventData.title || 'Events',
+                    filename: googleId ? `google_import_${Date.now()}.jpg` : `imported_${Date.now()}.jpg`,
+                    size: 0,
+                    uploaded_by: userData.user?.id,
+                    metadata: finalGoogleId ? { googlePhotoId: finalGoogleId } : undefined
+                } as any);
+            }
+
+            // Add to UI
+            if (uploadTarget === 'story') {
+                editorRef.current?.insertImage(finalUrl);
+            } else {
+                const newAsset = { url: finalUrl, type: 'image', googlePhotoId: finalGoogleId }; // Assume image for simplicity
+                // Use functional update to ensure fresh state
+                setEventData(prev => {
+                    const currentAssets = prev.content?.assets || [];
+                    return { ...prev, content: { ...prev.content, assets: [...currentAssets, newAsset] } };
+                });
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert("Failed to add media");
+        } finally {
+            setUploading(false);
+        }
+    };
+
 
     const isNew = !id || id === 'new';
 
@@ -180,6 +288,14 @@ export function EventEditor() {
 
         setIsSaving(true);
         try {
+            // Extract coordinates from geotag for database columns
+            let latitude = null;
+            let longitude = null;
+            if (eventData.geotag && typeof eventData.geotag === 'object') {
+                latitude = eventData.geotag.lat ?? null;
+                longitude = eventData.geotag.lng ?? null;
+            }
+
             const payload = {
                 family_id: familyId,
                 title: eventData.title,
@@ -190,6 +306,8 @@ export function EventEditor() {
                 hashtags: eventData.hashtags || [],
                 participants: eventData.participants || [],
                 geotag: eventData.geotag || null,
+                latitude,  // Store as separate column for map queries
+                longitude, // Store as separate column for map queries
                 content: eventData.content || { assets: [], galleryMode: 'cards' },
             };
 
@@ -269,6 +387,7 @@ export function EventEditor() {
                         variant="primary"
                         onClick={handleSave}
                         isLoading={isSaving}
+                        disabled={uploading || isSaving}
                         className="shadow-md"
                     >
                         <Save className="w-4 h-4 mr-2" />
@@ -379,10 +498,14 @@ export function EventEditor() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => fileInputRef.current?.click()}
+                                            onClick={() => {
+                                                setUploadTarget('story');
+                                                setShowSourceModal('story');
+                                            }}
                                             className="p-2 bg-catalog-accent/10 hover:bg-catalog-accent/20 text-catalog-accent rounded-md transition-colors"
                                             title="Add Image"
                                         >
+                                            <Camera className="w-4 h-4" />
                                         </Button>
                                     </div>
                                     {/* Upload/Compression Indicator */}
@@ -461,26 +584,54 @@ export function EventEditor() {
 
                                                 // Process Images
                                                 for (const file of imageFiles) {
-                                                    const { url, error: uploadError } = await storageService.uploadFile(file, 'event-assets', `events/${eventData.title}/`);
-                                                    if (uploadError) console.error('Bulk upload error:', uploadError);
+                                                    let finalUrl: string | null = null;
+                                                    let googlePhotoId: string | undefined;
+
+                                                    // Workflow #1: Upload to Google Photos
+                                                    if (googleAccessToken) {
+                                                        try {
+                                                            const photosService = new GooglePhotosService(googleAccessToken);
+                                                            const mediaItem = await photosService.uploadMedia(file, file.name);
+                                                            // We grab ID but prefer Storage URL for display stability
+                                                            googlePhotoId = mediaItem.id;
+                                                        } catch (err) {
+                                                            console.error('Google Photos upload failed for event:', err);
+                                                        }
+                                                    }
+
+                                                    // Workflow #2: Internal Storage (Always)
+                                                    const { url: storageUrl, error: uploadError } = await storageService.uploadFile(file, 'event-assets', `events/${eventData.title}/`);
+
+                                                    if (storageUrl) {
+                                                        finalUrl = storageUrl;
+                                                    } else if (uploadError) {
+                                                        console.error('Bulk upload error:', uploadError);
+                                                    }
+
+                                                    // Fallback: If Storage failed but Google succeeded, use Google URL (temporary but better than nothing)
+                                                    // (Optional: depending on preference. Here we skip if no storage URL for consistency)
+
                                                     // Log to family_media
-                                                    if (familyId) {
+                                                    if (finalUrl && familyId) {
+                                                        const { data: userData } = await supabase.auth.getUser();
                                                         await supabase.from('family_media').insert({
                                                             family_id: familyId,
-                                                            url: url,
+                                                            url: finalUrl,
                                                             type: file.type.startsWith('image/') ? 'image' : 'video',
                                                             category: 'event',
                                                             folder: eventData.title || 'Events',
                                                             filename: file.name,
                                                             size: file.size,
-                                                            uploaded_by: (await supabase.auth.getUser()).data.user?.id
+                                                            uploaded_by: userData.user?.id,
+                                                            metadata: googlePhotoId ? { googlePhotoId } : undefined
                                                         } as any);
                                                     }
-                                                    if (url) {
+
+                                                    if (finalUrl) {
                                                         if (uploadTarget === 'story') {
-                                                            editorRef.current?.insertImage(url);
+                                                            editorRef.current?.insertImage(finalUrl);
                                                         } else {
-                                                            newAssets.push({ url, type: 'image' });
+                                                            newAssets.push({ url: finalUrl, type: 'image', googlePhotoId } as any);
                                                         }
                                                     }
                                                 }
@@ -546,7 +697,7 @@ export function EventEditor() {
                                         <p className="text-sm text-catalog-text/40 italic">No gallery images added yet.</p>
                                         <button
                                             type="button"
-                                            onClick={() => { setUploadTarget('gallery'); fileInputRef.current?.click(); }}
+                                            onClick={() => { setUploadTarget('gallery'); setShowSourceModal('gallery'); }}
                                             className="mt-4 text-[10px] font-bold uppercase text-catalog-accent hover:underline"
                                         >
                                             Add to Gallery
@@ -576,7 +727,7 @@ export function EventEditor() {
                                                 ))}
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setUploadTarget('gallery'); fileInputRef.current?.click(); }}
+                                                    onClick={() => { setUploadTarget('gallery'); setShowSourceModal('gallery'); }}
                                                     className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-catalog-accent/20 rounded-lg hover:bg-catalog-accent/5 transition-colors group"
                                                 >
                                                     <Plus className="w-6 h-6 text-catalog-accent/40 group-hover:text-catalog-accent transition-colors" />
@@ -604,28 +755,48 @@ export function EventEditor() {
                                 const blob = await response.blob();
                                 const file = new File([blob], croppingImage.file.name, { type: 'image/jpeg' });
 
-                                const { url, error } = await storageService.uploadFile(file, 'event-assets', `events/${eventData.title}/`);
+                                let finalUrl: string | null = null;
+                                let googlePhotoId: string | undefined;
+
+                                // Workflow #1: Upload to Google Photos
+                                if (googleAccessToken) {
+                                    try {
+                                        const photosService = new GooglePhotosService(googleAccessToken);
+                                        const mediaItem = await photosService.uploadMedia(file, file.name);
+                                        googlePhotoId = mediaItem.id;
+                                    } catch (err) {
+                                        console.error('Google Photos upload failed for cropped image:', err);
+                                    }
+                                }
+
+                                // Workflow #2: Internal Storage
+                                const { url: storageUrl, error } = await storageService.uploadFile(file, 'event-assets', `events/${eventData.title}/`);
                                 if (error) throw error;
-                                if (url) {
+
+                                if (storageUrl) {
+                                    finalUrl = storageUrl;
+
                                     // Log to family_media
                                     if (familyId) {
+                                        const { data: userData } = await supabase.auth.getUser();
                                         await supabase.from('family_media').insert({
                                             family_id: familyId,
-                                            url: url,
+                                            url: finalUrl,
                                             type: 'image',
                                             category: 'event',
                                             folder: eventData.title || 'Events',
                                             filename: file.name,
                                             size: file.size,
-                                            uploaded_by: (await supabase.auth.getUser()).data.user?.id
+                                            uploaded_by: userData.user?.id,
+                                            metadata: googlePhotoId ? { googlePhotoId } : undefined
                                         } as any);
                                     }
 
                                     if (croppingImage.target === 'story') {
-                                        editorRef.current?.insertImage(url);
+                                        editorRef.current?.insertImage(finalUrl);
                                     } else {
                                         const newAssets = [...(eventData.content?.assets || [])];
-                                        newAssets.push({ url, type: 'image' });
+                                        newAssets.push({ url: finalUrl, type: 'image', googlePhotoId } as any);
                                         updateEventData({ ...eventData, content: { ...eventData.content, assets: newAssets } });
                                     }
                                 }
@@ -639,6 +810,99 @@ export function EventEditor() {
                     />
                 )}
             </main>
+
+            {/* Source Selection Modal */}
+            {showSourceModal && (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowSourceModal(null)}>
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="text-lg font-serif italic text-catalog-text">
+                                {showSourceModal === 'story' ? 'Add to Story' : 'Add to Gallery'}
+                            </h3>
+                            <button onClick={() => setShowSourceModal(null)} className="p-1 hover:bg-gray-100 rounded-full text-gray-400">
+                                <Plus className="w-5 h-5 rotate-45" />
+                            </button>
+                        </div>
+                        <div className="p-2">
+                            <button
+                                onClick={() => handleSourceSelect('library')}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <FolderOpen className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="font-bold text-gray-900 text-sm">Media Library</div>
+                                    <div className="text-xs text-gray-500">Select from uploads</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => handleSourceSelect('upload')}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Upload className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="font-bold text-gray-900 text-sm">Upload File</div>
+                                    <div className="text-xs text-gray-500">From your computer</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => handleSourceSelect('google')}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <ImageIcon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="font-bold text-gray-900 text-sm">Google Photos</div>
+                                    <div className="text-xs text-gray-500">Import from your library</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => handleSourceSelect('url')}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <LinkIcon className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="font-bold text-gray-900 text-sm">Image Link</div>
+                                    <div className="text-xs text-gray-500">Paste a direct URL</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showGooglePhotos && (
+                <GooglePhotosSelector
+                    isOpen={showGooglePhotos}
+                    onClose={() => setShowGooglePhotos(false)}
+                    onSelect={handleGooglePhotosSelect}
+                    folders={['Events', eventData.title || ''].filter(Boolean)}
+                    googleAccessToken={googleAccessToken || ''}
+                />
+            )}
+
+            {showUrlInput && (
+                <UrlInputModal
+                    isOpen={showUrlInput}
+                    onClose={() => setShowUrlInput(false)}
+                    onSubmit={handleUrlSubmit}
+                />
+            )}
+
+            {showMediaPicker && (
+                <MediaPickerModal
+                    isOpen={showMediaPicker}
+                    onClose={() => setShowMediaPicker(false)}
+                    onSelect={handleMediaPickerSelect}
+                    allowedTypes={['image', 'video']}
+                />
+            )}
         </div>
     );
 }

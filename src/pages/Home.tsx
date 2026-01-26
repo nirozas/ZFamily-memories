@@ -1,21 +1,25 @@
+// @locked - This file is locked. Do not edit unless requested to unlock.
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Card } from '../components/ui/Card';
-import { Calendar, Plus, User, PlusCircle, Camera, MapPin } from 'lucide-react';
 import '../HomeCarousel.css';
 import { CreateAlbumModal } from '../components/catalog/CreateAlbumModal';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { storageService } from '../services/storage';
+import { GooglePhotosService } from '../services/googlePhotos';
 import { WorldMapPreview } from '../components/home/WorldMapPreview';
+import { ImageCropper } from '../components/ui/ImageCropper';
+import { MediaPickerModal } from '../components/media/MediaPickerModal';
+import { Calendar, Plus, User, PlusCircle, Camera, MapPin, Image as ImageIcon, Edit, Loader2, FolderOpen, Upload } from 'lucide-react';
 import type { Event, Profile } from '../types/supabase';
 
 const DEFAULT_HERO_IMAGE = 'https://images.unsplash.com/photo-1511895426328-dc8714191300?q=80&w=2070&auto=format&fit=crop';
 
 export function Home() {
-    const { familyId, userRole } = useAuth();
+    const { familyId, userRole, googleAccessToken, loading: authLoading } = useAuth();
     const navigate = useNavigate();
     const [recentEvents, setRecentEvents] = useState<Event[]>([]);
     const [recentAlbums, setRecentAlbums] = useState<any[]>([]);
@@ -26,7 +30,13 @@ export function Home() {
     const [newMemberName, setNewMemberName] = useState('');
     const [heroImageUrl, setHeroImageUrl] = useState(DEFAULT_HERO_IMAGE);
     const [isUploadingHero, setIsUploadingHero] = useState(false);
+    const [showCropper, setShowCropper] = useState<{ src: string } | null>(null);
     const heroInputRef = useRef<HTMLInputElement>(null);
+
+    // Media Picker State
+    const [showMediaPicker, setShowMediaPicker] = useState(false);
+    const [showSourceModal, setShowSourceModal] = useState(false);
+    const [activeTarget, setActiveTarget] = useState<'hero' | string | null>(null); // 'hero' or eventId
 
     const isAdmin = userRole === 'admin';
 
@@ -42,19 +52,68 @@ export function Home() {
         const file = e.target.files?.[0];
         if (!file || !familyId) return;
 
+        // Show cropper first
+        const reader = new FileReader();
+        reader.onload = () => {
+            setShowCropper({ src: reader.result as string });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // Unified Handler for Hero Update
+    const processHeroUpdate = async (url: string | File, type: 'file' | 'url' = 'url') => {
+        if (!familyId) return;
         setIsUploadingHero(true);
+
         try {
-            const { url, error } = await storageService.uploadFile(
-                file,
-                'album-assets',
-                `hero/${familyId}/`
-            );
-            if (url) {
-                setHeroImageUrl(url);
-                localStorage.setItem(`family_hero_${familyId}`, url);
-            } else if (error) {
-                console.error('Error uploading hero image:', error);
-                alert('Failed to upload image');
+            let finalUrl: string | null = null;
+            let googlePhotoId: string | undefined;
+
+            if (type === 'file') {
+                const file = url as File;
+                // Workflow #1: Upload to Google Photos if connected
+                if (googleAccessToken) {
+                    try {
+                        const photosService = new GooglePhotosService(googleAccessToken);
+                        const mediaItem = await photosService.uploadMedia(file, 'Family Archive Hero Image');
+                        finalUrl = mediaItem.baseUrl || null;
+                        googlePhotoId = mediaItem.id;
+                    } catch (err) {
+                        console.error('Google Photos hero upload failed, falling back to local storage:', err);
+                    }
+                }
+
+                // Workflow #2: Fallback/Dual-save to Supabase Storage
+                const { url: storageUrl, error } = await storageService.uploadFile(
+                    file,
+                    'album-assets',
+                    `hero/${familyId}/${Date.now()}/`
+                );
+                if (storageUrl) finalUrl = storageUrl;
+            } else {
+                finalUrl = url as string;
+            }
+
+            if (finalUrl) {
+                localStorage.setItem(`family_hero_${familyId}`, finalUrl);
+                setHeroImageUrl(finalUrl);
+
+                // Optional: Register in media library too if it's a new upload or change
+                const { data: userData } = await supabase.auth.getUser();
+                await supabase.from('family_media').insert({
+                    family_id: familyId,
+                    url: finalUrl,
+                    type: 'image',
+                    category: 'hero',
+                    folder: 'Archive Settings',
+                    filename: type === 'file' ? (url as File).name : 'hero_image.jpg',
+                    size: type === 'file' ? (url as File).size : 0,
+                    uploaded_by: userData.user?.id,
+                    metadata: googlePhotoId ? { googlePhotoId } : undefined
+                } as any);
+
+            } else {
+                alert('Failed to update hero image');
             }
         } catch (err) {
             console.error('Error uploading hero image:', err);
@@ -63,7 +122,157 @@ export function Home() {
         }
     };
 
+    const handleCropComplete = async (croppedImageUrl: string) => {
+        setShowCropper(null);
+        try {
+            const response = await fetch(croppedImageUrl);
+            const blob = await response.blob();
+            const file = new File([blob], 'cropped_image.jpg', { type: 'image/jpeg' });
+
+            if (activeTarget === 'hero') {
+                await processHeroUpdate(file, 'file');
+            } else if (activeTarget) {
+                // Event Cover Update
+                await processEventCoverUpdate(activeTarget, file, undefined, 'file');
+            }
+        } catch (e) {
+            console.error("Crop processing failed", e);
+        }
+    };
+
+    const handleSourceSelect = (source: 'upload' | 'library') => {
+        setShowSourceModal(false);
+        if (source === 'upload') {
+            if (activeTarget === 'hero') {
+                heroInputRef.current?.click();
+            } else if (activeTarget) {
+                activeEventIdRef.current = activeTarget;
+                eventCoverInputRef.current?.click();
+            }
+        } else if (source === 'library') {
+            setShowMediaPicker(true);
+        }
+    };
+
+    const handleMediaPickerSelect = async (item: any) => {
+        setShowMediaPicker(false);
+        if (!item || !activeTarget) return;
+
+        // Open cropper with the selected URL
+        // Note: For Google Photos or external URLs without CORS, this might fail on the canvas step.
+        // We rely on the user selecting internal library assets or proxyable URLs.
+        setShowCropper({ src: item.url });
+    };
+
+    // Refactored Event Cover Update to shared function
+    const processEventCoverUpdate = async (eventId: string, source: string | File, googleId?: string, type: 'file' | 'url' = 'file') => {
+        let finalUrl: string | null = null;
+        let googlePhotoId: string | undefined = googleId;
+
+        if (type === 'file') {
+            const file = source as File;
+            setIsUpdatingCover(eventId);
+            try {
+                // Workflow #1: Upload to Google Photos if connected
+                if (googleAccessToken) {
+                    try {
+                        const photosService = new GooglePhotosService(googleAccessToken);
+                        const mediaItem = await photosService.uploadMedia(file, `Event Cover: ${eventId}`);
+                        // Prioritize preserving the original ID
+                        googlePhotoId = mediaItem.id;
+                    } catch (err) {
+                        console.error('Google Photos upload failed:', err);
+                    }
+                }
+
+                // Workflow #2: Internal Storage
+                const { url: storageUrl } = await storageService.uploadFile(
+                    file,
+                    'album-assets',
+                    `events/${eventId}/cover/`
+                );
+
+                if (storageUrl) {
+                    finalUrl = storageUrl;
+
+                    // Log to media library
+                    const { data: userData } = await supabase.auth.getUser();
+                    await supabase.from('family_media').insert({
+                        family_id: familyId,
+                        url: finalUrl,
+                        type: 'image',
+                        category: 'event',
+                        folder: 'Event Covers',
+                        filename: file.name,
+                        size: file.size,
+                        uploaded_by: userData.user?.id,
+                        metadata: googlePhotoId ? { googlePhotoId } : undefined
+                    } as any);
+                }
+            } catch (e) {
+                console.error("Event cover upload failed", e);
+            } finally {
+                setIsUpdatingCover(null);
+            }
+        } else {
+            finalUrl = source as string;
+        }
+
+        if (finalUrl) {
+            // Fetch current event to get latest content
+            const { data: event } = await (supabase as any)
+                .from('events')
+                .select('content')
+                .eq('id', eventId)
+                .single();
+
+            let content = (event as any)?.content || {};
+            if (typeof content === 'string') {
+                try { content = JSON.parse(content); } catch (e) { content = {}; }
+            }
+
+            const updatedContent = {
+                ...content,
+                presentationUrl: finalUrl,
+                googlePhotoId: googlePhotoId || content.googlePhotoId
+            };
+
+            const { data: updatedRows, error: updateError } = await (supabase as any)
+                .from('events')
+                .update({ content: updatedContent })
+                .eq('id', eventId)
+                .select();
+
+            if (updateError) throw updateError;
+
+            // Update local state
+            setRecentEvents((prev: any[]) => prev.map((ev: any) =>
+                ev.id === eventId ? { ...ev, content: updatedContent } : ev
+            ));
+        }
+    };
+
     // We will only show real profiles from the database
+
+    const [isUpdatingCover, setIsUpdatingCover] = useState<string | null>(null);
+    const eventCoverInputRef = useRef<HTMLInputElement>(null);
+    const activeEventIdRef = useRef<string | null>(null);
+
+    const handleUpdateEventCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        const eventId = activeEventIdRef.current;
+        if (!file || !familyId || !eventId) return;
+
+        // Show cropper for uploaded file too
+        const reader = new FileReader();
+        reader.onload = () => {
+            setShowCropper({ src: reader.result as string });
+        };
+        reader.readAsDataURL(file);
+
+        // Clear input so same file can be selected again
+        e.target.value = '';
+    };
 
     useEffect(() => {
         async function fetchData() {
@@ -79,7 +288,7 @@ export function Home() {
                     .select('*')
                     .eq('family_id', familyId)
                     .order('event_date', { ascending: false })
-                    .limit(3);
+                    .limit(6);
 
                 if (events) setRecentEvents(events);
 
@@ -166,7 +375,7 @@ export function Home() {
 
     const displayMembers = familyMembers;
 
-    if (loading) {
+    if (loading || authLoading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="w-12 h-12 border-4 border-catalog-accent border-t-transparent rounded-full animate-spin" />
@@ -197,7 +406,7 @@ export function Home() {
     return (
         <div className="space-y-12 pb-12">
             {/* 1. Hero Section */}
-            <section className="relative h-[35vh] w-full overflow-hidden group">
+            <section className="relative h-[50vh] w-full overflow-hidden group">
                 <div className="absolute inset-0 bg-black/40 z-10" />
                 <img
                     src={heroImageUrl}
@@ -224,7 +433,10 @@ export function Home() {
                             onChange={handleHeroImageChange}
                         />
                         <button
-                            onClick={() => heroInputRef.current?.click()}
+                            onClick={() => {
+                                setActiveTarget('hero');
+                                setShowSourceModal(true);
+                            }}
                             disabled={isUploadingHero}
                             className="absolute bottom-6 right-6 z-30 flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-catalog-text rounded-full shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-105"
                         >
@@ -252,37 +464,101 @@ export function Home() {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        <input
+                            ref={eventCoverInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleUpdateEventCover}
+                        />
                         {recentEvents.length > 0 ? (
-                            recentEvents.map(event => (
-                                <Link key={event.id} to={`/event/${event.id}/view`} className="block h-full">
-                                    <Card variant="interactive" className="h-full flex flex-col justify-between group border-l-4 border-pastel-green">
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2 text-pastel-indigo text-sm font-bold">
-                                                <Calendar className="w-4 h-4" />
-                                                {new Date(event.event_date).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                            recentEvents.map(event => {
+                                const presentationImages = [
+                                    'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=800&q=80',
+                                    'https://images.unsplash.com/photo-1526749837599-b4eba9fd855e?auto=format&fit=crop&w=800&q=80',
+                                    'https://images.unsplash.com/photo-1544376798-89aa6b82c6cd?auto=format&fit=crop&w=800&q=80',
+                                    'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&w=800&q=80',
+                                    'https://images.unsplash.com/photo-1582234372722-50d7ccc30ebd?auto=format&fit=crop&w=800&q=80',
+                                    'https://images.unsplash.com/photo-1473625247510-8ceb1760943f?auto=format&fit=crop&w=800&q=80'
+                                ];
+
+                                // Pick a stable random image based on ID
+                                const fallbackImage = presentationImages[event.id.charCodeAt(0) % presentationImages.length];
+
+                                let content = event.content;
+                                if (typeof content === 'string') {
+                                    try { content = JSON.parse(content); } catch (e) { content = {}; }
+                                }
+                                const firstImg = content?.assets?.find((a: any) => a.type === 'image' || a.type === 'video');
+                                const displayUrl = content?.presentationUrl || firstImg?.url || fallbackImage;
+
+                                return (
+                                    <Link key={event.id} to={`/event/${event.id}/view`} className="block h-full relative group/card">
+                                        <Card variant="interactive" className="h-full flex flex-col group border-l-2 border-pastel-green overflow-hidden p-0 relative">
+                                            {/* 1. Image (fills top portion) */}
+                                            <div className="aspect-square w-full bg-gray-100 overflow-hidden relative">
+                                                <img
+                                                    src={displayUrl}
+                                                    className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
+                                                    alt={event.title}
+                                                />
+
+                                                {/* Edit Hover Overlay */}
+                                                {isAdmin && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            setActiveTarget(event.id);
+                                                            setShowSourceModal(true);
+                                                        }}
+                                                        className="absolute top-2 right-2 p-2 bg-white/90 rounded-full shadow-lg opacity-0 group-hover/card:opacity-100 transition-all hover:scale-110 z-20"
+                                                        title="Change Cover Image"
+                                                    >
+                                                        {isUpdatingCover === event.id ? (
+                                                            <Loader2 className="w-4 h-4 animate-spin text-catalog-accent" />
+                                                        ) : (
+                                                            <Edit className="w-4 h-4 text-catalog-accent" />
+                                                        )}
+                                                    </button>
+                                                )}
                                             </div>
-                                            <h3 className="text-xl font-sans font-bold text-catalog-text group-hover:text-pastel-indigo transition-colors">
-                                                {event.title}
-                                            </h3>
-                                            <p className="text-catalog-text/70 line-clamp-3 text-sm">
-                                                {event.description?.replace(/<[^>]*>/g, '') || 'No description provided.'}
-                                            </p>
-                                        </div>
-                                    </Card>
-                                </Link>
-                            ))
+
+                                            {/* 2. Content (Title -> Date -> Location) */}
+                                            <div className="p-3 flex-1 flex flex-col">
+                                                <h3 className="text-xs font-sans font-black text-catalog-text group-hover:text-pastel-indigo transition-colors line-clamp-2 mb-2 leading-tight uppercase tracking-tight">
+                                                    {event.title}
+                                                </h3>
+
+                                                <div className="mt-auto space-y-1">
+                                                    <div className="flex items-center gap-1.5 text-pastel-indigo text-[9px] font-bold uppercase tracking-wider">
+                                                        <Calendar className="w-3 h-3" />
+                                                        {new Date(event.event_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    </div>
+
+                                                    {event.location && (
+                                                        <div className="flex items-center gap-1.5 text-gray-400 text-[9px] font-medium truncate">
+                                                            <MapPin className="w-3 h-3 text-catalog-accent/40" />
+                                                            {event.location}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </Link>
+                                );
+                            })
                         ) : (
-                            // Placeholder cards if no events
-                            [1, 2, 3].map(i => (
-                                <Card key={i} className="h-full opacity-60">
-                                    <div className="h-40 bg-catalog-accent/5 mb-4 rounded-sm flex items-center justify-center">
-                                        <Calendar className="w-8 h-8 text-catalog-accent/20" />
+                            // Placeholder cards if no events (matching new 6-column grid)
+                            [1, 2, 3, 4, 5, 6].map(i => (
+                                <Card key={i} className="aspect-[3/4] opacity-20 p-0 border-l-2 border-gray-100">
+                                    <div className="h-1/2 bg-gray-50 flex items-center justify-center">
+                                        <ImageIcon className="w-6 h-6 text-gray-200" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <div className="h-4 w-24 bg-catalog-text/10 rounded" />
-                                        <div className="h-6 w-3/4 bg-catalog-text/10 rounded" />
-                                        <div className="h-12 w-full bg-catalog-text/5 rounded" />
+                                    <div className="p-3 space-y-2">
+                                        <div className="h-2 w-full bg-gray-100 rounded" />
+                                        <div className="h-2 w-2/3 bg-gray-100 rounded" />
                                     </div>
                                 </Card>
                             ))
@@ -473,6 +749,69 @@ export function Home() {
                 isOpen={showCreateAlbumModal}
                 onClose={() => setShowCreateAlbumModal(false)}
             />
-        </div>
+            {/* Image Cropper for Hero and Events */}
+            {showCropper && (
+                <ImageCropper
+                    src={showCropper.src}
+                    onCropComplete={handleCropComplete}
+                    onCancel={() => {
+                        setShowCropper(null);
+                        if (heroInputRef.current) heroInputRef.current.value = '';
+                        if (eventCoverInputRef.current) eventCoverInputRef.current.value = '';
+                    }}
+                />
+            )}
+            {/* Source Selection Modal */}
+            {showSourceModal && (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in" onClick={() => setShowSourceModal(false)}>
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                            <h3 className="text-lg font-serif italic text-catalog-text">Change Image</h3>
+                            <button onClick={() => setShowSourceModal(false)} className="p-1 hover:bg-gray-100 rounded-full text-gray-400">
+                                <Plus className="w-5 h-5 rotate-45" />
+                            </button>
+                        </div>
+                        <div className="p-2">
+                            <button
+                                onClick={() => handleSourceSelect('library')}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <FolderOpen className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="font-bold text-gray-900 text-sm">Media Library</div>
+                                    <div className="text-xs text-gray-500">Select from uploads</div>
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => handleSourceSelect('upload')}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 transition-colors group"
+                            >
+                                <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <Upload className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="font-bold text-gray-900 text-sm">Upload File</div>
+                                    <div className="text-xs text-gray-500">From your computer</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )
+            }
+
+            {
+                showMediaPicker && (
+                    <MediaPickerModal
+                        isOpen={showMediaPicker}
+                        onClose={() => setShowMediaPicker(false)}
+                        onSelect={handleMediaPickerSelect}
+                        allowedTypes={['image']}
+                    />
+                )
+            }
+        </div >
     );
 }

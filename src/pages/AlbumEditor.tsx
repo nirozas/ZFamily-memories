@@ -5,8 +5,9 @@ import {
     ArrowLeft, Save, Share, X, Copy, Check, Settings as SettingsIcon, Tag,
     ChevronDown, ChevronRight, ChevronLeft, ChevronUp,
     Layers, Bold, Underline, Pencil, Trash2,
-    Lock, Unlock, Eye, Plus, Undo, Redo, Maximize, MapPin
+    Lock, Unlock, Eye, Plus, Undo, Redo, Maximize, MapPin, Image as ImageIcon
 } from 'lucide-react';
+import { MediaPickerModal } from '../components/media/MediaPickerModal';
 import { useAlbum } from '../contexts/AlbumContext';
 import { EditorCanvas } from '../components/editor/EditorCanvas';
 import { AssetControlPanel } from '../components/editor/AssetControlPanel';
@@ -58,6 +59,18 @@ function AlbumEditorContent() {
         canRedo
     } = useAlbum();
 
+    // --- STUDIO SYNCHRONIZATION HOOK ---
+    // Force the Studio to load the saved state if id is present.
+    useEffect(() => {
+        if (id) {
+            console.log(`[AlbumEditor] Initializing Studio with Album ID: ${id}`);
+            fetchAlbum(id).catch(err => {
+                console.error("[AlbumEditor] Initialization Crash:", err);
+                setLoadError(err.message || "Failed to load archive data");
+            });
+        }
+    }, [id]);
+
     // Autosave Hook
     const autoSave = useAlbumAutoSave();
 
@@ -76,6 +89,51 @@ function AlbumEditorContent() {
     const [navigationDirection, setNavigationDirection] = useState<'next' | 'prev'>('next');
     const [activePageId, setActivePageId] = useState<string | null>(null);
 
+    // --- PROFESSIONAL LOCAL BACKUP SYSTEM ---
+    const [hasLocalBackup, setHasLocalBackup] = useState(false);
+
+    // 1. Monitor for changes and mirror to localStorage
+    useEffect(() => {
+        if (album && !isLoading && album.pages.length > 0) {
+            const backupKey = `album_backup_${album.id}`;
+            localStorage.setItem(backupKey, JSON.stringify({
+                album,
+                timestamp: Date.now()
+            }));
+        }
+    }, [album, isLoading]);
+
+    // 2. Check for existing backup on mount
+    useEffect(() => {
+        if (id) {
+            const backup = localStorage.getItem(`album_backup_${id}`);
+            if (backup) {
+                try {
+                    const parsed = JSON.parse(backup);
+                    // Only flag as backup if it's valid and contains pages
+                    if (parsed && parsed.album && Array.isArray(parsed.album.pages)) {
+                        setHasLocalBackup(true);
+                        console.log(`[BackupSystem] Local safety copy found for album ${id}`);
+                    }
+                } catch (e) {
+                    localStorage.removeItem(`album_backup_${id}`);
+                }
+            }
+        }
+    }, [id]);
+
+    const restoreBackup = () => {
+        if (id) {
+            const backup = localStorage.getItem(`album_backup_${id}`);
+            if (backup) {
+                const { album: backedUpAlbum } = JSON.parse(backup);
+                setAlbum(backedUpAlbum);
+                setHasLocalBackup(false);
+                alert("Restored from local backup. Please save immediately to sync with cloud.");
+            }
+        }
+    };
+
     // Sync activePageId when page changes
     useEffect(() => {
         if (album && album.pages[currentPageIndex]) {
@@ -90,6 +148,7 @@ function AlbumEditorContent() {
     const [editorMode, setEditorMode] = useState<'select' | 'mask' | 'pivot' | 'studio'>('select');
     const [showLocationModal, setShowLocationModal] = useState(false);
     const [showMapModal, setShowMapModal] = useState(false);
+    const [showCoverPicker, setShowCoverPicker] = useState(false);
     const showPrintSafe = true;
     const workspaceRef = useRef<HTMLDivElement>(null);
 
@@ -330,6 +389,27 @@ function AlbumEditorContent() {
 
     return (
         <div className="h-screen flex flex-col bg-gray-50 relative">
+            {/* --- BACKUP RECOVERY BANNER --- */}
+            <AnimatePresence>
+                {hasLocalBackup && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="bg-catalog-accent text-white px-6 py-2 flex items-center justify-between text-xs font-bold uppercase tracking-widest z-[70]"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Layers className="w-4 h-4 animate-pulse" />
+                            <span>Unsaved Local Backup Found (Recovering your session)</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <button onClick={restoreBackup} className="hover:underline bg-white/20 px-3 py-1 rounded-sm">Restore Progress</button>
+                            <button onClick={() => setHasLocalBackup(false)} className="opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Share Modal Overlay */}
             {showShareModal && (
                 <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
@@ -400,6 +480,35 @@ function AlbumEditorContent() {
                                     rows={3}
                                     className="w-full bg-catalog-stone/10 border-0 rounded-lg px-3 py-2 text-sm text-catalog-text focus:ring-2 focus:ring-catalog-accent/30"
                                 />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-medium text-catalog-text/70 uppercase tracking-widest">Cover Image</label>
+                                <div className="flex items-center gap-3">
+                                    <div className="relative w-16 h-16 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                                        {album.coverUrl ? (
+                                            <img src={album.coverUrl} alt="Cover" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                                <ImageIcon className="w-8 h-8 opacity-50" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => setShowCoverPicker(true)}
+                                    >
+                                        Change Cover
+                                    </Button>
+                                    {album.coverUrl && (
+                                        <button
+                                            onClick={() => setAlbum({ ...album, coverUrl: null })}
+                                            className="text-xs text-red-500 hover:underline"
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-xs font-medium text-catalog-text/70 uppercase tracking-widest flex items-center gap-1">
@@ -1088,14 +1197,11 @@ function AlbumEditorContent() {
                                                         page={spread[0]}
                                                         nextPage={spread[1]}
                                                         side="left" // Signifies this is the start of a spread
-                                                        editorMode={editorMode}
-                                                        setEditorMode={setEditorMode}
                                                         showPrintSafe={showPrintSafe}
                                                         zoom={zoom}
                                                         onPageSelect={setActivePageId}
                                                         onOpenMapEditor={handleOpenMapEditor}
                                                         onOpenLocationEditor={handleOpenLocationEditor}
-                                                        onOpenProEditor={(assetId) => setProTextAssetId(assetId)}
                                                     />
                                                     {/* Gutter Guide */}
                                                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-full z-10 pointer-events-none flex">
@@ -1120,14 +1226,11 @@ function AlbumEditorContent() {
                                                     <EditorCanvas
                                                         page={page}
                                                         side={side}
-                                                        editorMode={editorMode}
-                                                        setEditorMode={setEditorMode}
                                                         showPrintSafe={showPrintSafe}
                                                         zoom={zoom}
                                                         onPageSelect={setActivePageId}
                                                         onOpenMapEditor={handleOpenMapEditor}
                                                         onOpenLocationEditor={handleOpenLocationEditor}
-                                                        onOpenProEditor={(assetId) => setProTextAssetId(assetId)}
                                                     />
                                                 </div>
                                             );
@@ -1380,6 +1483,22 @@ function AlbumEditorContent() {
                     }}
                 />
             )}
+
+            {showCoverPicker && (
+                <MediaPickerModal
+                    isOpen={showCoverPicker}
+                    onClose={() => setShowCoverPicker(false)}
+                    onSelect={(item) => {
+                        if (album) {
+                            setAlbum({ ...album, coverUrl: item.url });
+                        }
+                        setShowCoverPicker(false);
+                    }}
+                    allowedTypes={['image']}
+                />
+            )}
+
+
         </div>
     );
 }

@@ -6,32 +6,64 @@ import { type Page, type LayoutBox, type PageStyles, type Asset } from '../conte
  * Implements Fallback-to-Legacy and Progressive-Enhancement patterns.
  */
 export function normalizePageData(p: any): Page {
-    // --- DEFENSIVE PARSING ENGINE ---
-    const parseJSON = (data: any) => {
-        if (!data) return [];
-        if (Array.isArray(data)) return data;
-        if (typeof data === 'string') {
-            try {
-                return JSON.parse(data);
-            } catch (e) {
-                console.error('[Normalization] JSON Parse Failure:', e);
-                return [];
-            }
+    // --- INDESTRUCTIBLE SAFE PARSE ENGINE ---
+    const safeParse = (data: any, fallback: any = []) => {
+        if (!data) return fallback;
+        if (typeof data === 'object') return data;
+        if (typeof data === 'string' && (data === 'null' || data === 'undefined')) return fallback;
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            console.error('[Normalization] Logic Failure: Malformed JSON detected.', { error: e, data });
+            return fallback;
         }
-        return [data];
     };
 
-    // 1. Identify schema format (Prioritize layout_config -> layout_json -> content)
-    const rawLayout = p.layout_config || p.layout_json || p.content || [];
-    const layoutArray = parseJSON(rawLayout);
-    const textArray = parseJSON(p.text_layers || []);
+    // 1. Identify schema format - MULTI-STAGE DISCOVERY
+    // We check each column and pick the first one that yields a non-empty array.
+    const configData = safeParse(p.layout_config, null);
+    const jsonData = safeParse(p.layout_json, null);
+    const contentData = safeParse(p.content, null);
+
+    let layoutArray = (configData && Array.isArray(configData) && configData.length > 0) ? configData
+        : (jsonData && Array.isArray(jsonData) && jsonData.length > 0) ? jsonData
+            : (contentData && Array.isArray(contentData) && contentData.length > 0) ? contentData
+                : (configData || jsonData || contentData || []); // Final fallback to whatever exists
+
+    const rawAreaText = p.text_layers || [];
+    const textArray = safeParse(rawAreaText);
+
+    // [DIAGNOSTIC] Log hydration source for the 26-page album mystery
+    if (p.page_number === 1) {
+        console.log(`[Hydration] Page 1 Sources: config=${!!p.layout_config}, json=${!!p.layout_json}, assets=${p.assets?.length || 0}`);
+        console.log(`[Hydration] Selected Layout Items: ${layoutArray.length}`, layoutArray[0]);
+    }
 
     const isUnified = Array.isArray(layoutArray) && (layoutArray.length > 0 || !!p.layout_config || !!p.layout_json);
 
     if (isUnified) {
         // --- NEW UNIFIED SCHEMA (v5.0) ---
-        // Combine everything to filter roles (some formats might mix them)
-        const allItems = [...layoutArray, ...textArray];
+        // Fallback: If layoutArray is empty but assets exist, convert assets to layout boxes
+        let finalLayoutArray = [...layoutArray];
+        if (finalLayoutArray.length === 0 && p.assets && p.assets.length > 0) {
+            console.warn(`[Normalization] Unified layout empty for page ${p.page_number}, falling back to assets column.`);
+            finalLayoutArray = p.assets.map((a: any) => ({
+                id: a.id,
+                role: 'freeform',
+                left: a.x || 0,
+                top: a.y || 0,
+                width: a.width || 30,
+                height: a.height || 30,
+                zIndex: a.z_index || 10,
+                content: {
+                    type: a.asset_type || a.type || 'image',
+                    url: a.url,
+                    config: a.config || {}
+                }
+            }));
+        }
+
+        const allItems = [...finalLayoutArray, ...textArray];
 
         const layoutConfig: LayoutBox[] = allItems
             .filter((item: any) => item && item.role !== 'text')

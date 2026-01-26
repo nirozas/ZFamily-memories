@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { cn } from '../../lib/utils';
 import { type Page, type LayoutBox } from '../../contexts/AlbumContext';
 import { LayoutFrame } from '../shared/LayoutFrame';
+import { mapAssetsToLayoutSlots } from '../../lib/layoutUtils';
 
 interface AlbumPageProps {
     page: Page;
@@ -37,37 +38,38 @@ export const AlbumPage: React.FC<AlbumPageProps> = ({
             backgroundImage: page.backgroundImage
         };
 
-        const layoutConfig: LayoutBox[] = page.layoutConfig || [];
+        const layoutBoxes: LayoutBox[] = page.layoutConfig || [];
         const textLayers: LayoutBox[] = page.textLayers || [];
+        const freeformAssets = page.assets.filter(a => a.slotId === undefined || a.slotId === null);
 
-        // Legacy Fallback
-        const combinedLayout: LayoutBox[] = [...layoutConfig];
+        let combinedLayout: LayoutBox[] = [];
 
-        if (layoutConfig.length === 0 && page.assets && page.assets.length > 0) {
-            page.assets.forEach(asset => {
-                const role = asset.type === 'text' ? 'text' : 'slot';
-                const box: LayoutBox = {
-                    id: asset.id,
-                    role: role,
-                    left: asset.x,
-                    top: asset.y,
-                    width: asset.width,
-                    height: asset.height,
-                    zIndex: asset.zIndex || (role === 'text' ? 50 : 10),
-                    content: {
-                        type: asset.type === 'image' || asset.type === 'frame' ? 'image' : (asset.type as any),
-                        url: asset.url,
-                        zoom: asset.crop?.zoom || 1,
-                        x: asset.crop?.x || 50,
-                        y: asset.crop?.y || 50,
-                        rotation: asset.rotation || 0,
-                        text: asset.content,
-                        config: { ...asset }
-                    }
-                };
-                combinedLayout.push(box);
-            });
+        if (layoutBoxes.length > 0) {
+            combinedLayout = mapAssetsToLayoutSlots(layoutBoxes, page.assets);
         }
+
+        freeformAssets.forEach(asset => {
+            const role = asset.type === 'text' ? 'text' : 'slot';
+            combinedLayout.push({
+                id: asset.id,
+                role: role,
+                left: asset.x,
+                top: asset.y,
+                width: asset.width,
+                height: asset.height,
+                zIndex: asset.zIndex || (role === 'text' ? 50 : 10),
+                content: {
+                    type: asset.type === 'image' || asset.type === 'frame' ? 'image' : (asset.type as any),
+                    url: asset.url,
+                    zoom: asset.crop?.zoom || 1,
+                    x: asset.crop?.x || 50,
+                    y: asset.crop?.y || 50,
+                    rotation: asset.rotation || 0,
+                    text: asset.content,
+                    config: { ...asset }
+                }
+            });
+        });
 
         return { styles, layout: combinedLayout, text: textLayers };
     }, [page]);
